@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "pymetadataeditor"
+version = "0.1.0"
+description = "Metadata editor client in python"
+authors = ["Gordon Blackadder <iblackadder@worldbank.org>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
