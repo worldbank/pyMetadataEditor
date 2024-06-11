@@ -13,5 +13,5 @@ In your python environment run `pip install poetry` then navigate to the pymetad
 
 If you are running on Windows and see errors about numpy installation errors then it could be an issue with Windows file paths. With default settings, file paths that exceed a few hundred characters can cause installation problems. To overcome this you can either
 
-1) enable long path support in Windows
+1) enable long path support in Windows (https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=powershell#enable-long-paths-in-windows-10-version-1607-and-later)
 2) install python libraries in a folder in the current directory by running `poetry config virtualenvs.in-project true` and then running `poetry install`
