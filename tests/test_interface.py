@@ -96,6 +96,9 @@ def test__quick_validate_metadata():
     with pytest.raises(ValueError):
         me._quick_validate_metadata(data_misses_idno)
 
+    data_is_good = {"idno": "GB123"}
+    me._quick_validate_metadata(data_is_good)
+
 
 def test_create_timeseries(monkeypatch):
     metadata = {
