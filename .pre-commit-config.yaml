@@ -8,6 +8,7 @@ repos:
     rev: v0.0.287  # Use the latest version
     hooks:
       - id: ruff
+        args: ["--fix"]
 
   - repo: https://github.com/psf/black
     rev: 23.3.0  # Use the latest version
