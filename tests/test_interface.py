@@ -1,12 +1,15 @@
+from typing import Optional
+
 import pandas as pd
 import pytest
 import requests
 
 from pymetadataeditor import MetadataEditor
+from pymetadataeditor.interface import MetadataDict
 
 
 class MockResponse:
-    def __init__(self, status_code, json_data=None):
+    def __init__(self, status_code: int, json_data: Optional[MetadataDict] = None):
         self.status_code = status_code
         self.json_data = json_data if json_data is not None else {}
 
@@ -16,12 +19,15 @@ class MockResponse:
         elif self.status_code != 200:
             raise requests.exceptions.HTTPError(f"{self.status_code} Error")
 
-    def json(self):
-        return self.json_data
+    def json(self) -> MetadataDict:
+        if self.json_data is not None:
+            return self.json_data
+        else:
+            return {}
 
 
 @pytest.mark.parametrize("method", ["get", "post"])
-def test_given_request(monkeypatch, method):
+def test_given_request(monkeypatch, method: str):
     me = MetadataEditor(api_key="test")
     if method == "get":
 
