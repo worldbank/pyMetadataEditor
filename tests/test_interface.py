@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 import requests
 
-from pymetadataeditor.interface import MetadataEditor
+from pymetadataeditor import MetadataEditor
 
 
 class MockResponse:

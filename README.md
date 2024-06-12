@@ -24,3 +24,7 @@ If you are running on Windows and see errors about numpy installation errors the
 
 1) enable long path support in Windows (https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=powershell#enable-long-paths-in-windows-10-version-1607-and-later)
 2) install python libraries in a folder in the current directory by running `poetry config virtualenvs.in-project true` and then running `poetry install`
+
+# Notes
+
+In keeping with World Bank Group practice, it should be noted that parts of this code base were written with the assistance of ChatGPT.
