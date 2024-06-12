@@ -7,7 +7,16 @@ This is a work in progress python implementation of the r package metadataeditr 
 
 This library uses Poetry for dependency management (https://python-poetry.org/docs/basic-usage/).
 
-In your python environment run `pip install poetry` then navigate to the pymetadataeditor folder and run `poetry install` or, if that doesn't work, try `python -m poetry install`. 
+In your python environment run `pip install poetry` then navigate to the pymetadataeditor folder and run `poetry install` or, if that doesn't work, try `python -m poetry install`.
+
+## Development python environment
+
+If you want to make changes to this repo then you also need to install the tools used for development but which aren't used otherwise, for example pytest.
+
+Run:
+
+`poetry install --with dev`
+`poetry run pre-commit install`
 
 ## Poetry troubleshooting
 
