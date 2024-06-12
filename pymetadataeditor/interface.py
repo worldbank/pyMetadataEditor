@@ -6,6 +6,8 @@ from typing import Dict, Union, Optional
 class MetadataEditor():
 
     def __init__(self, api_key: str):
+        """
+        """
         self.api_key = api_key
 
     def _request(self, method: str, url: str, **kwargs):
@@ -49,7 +51,9 @@ class MetadataEditor():
     def _post_request(self, url: str, metadata: Dict[str, Union[str, Dict]]):
         self._request('post', url=url, json=metadata)
 
-    def list_collections(self):
+    def list_collections(self) -> pd.DataFrame:
+        """
+        """
         list_collections_get_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor"
         response = self._get_request(list_collections_get_url)
         project_collection = response['projects']
@@ -57,6 +61,8 @@ class MetadataEditor():
         return pd.DataFrame.from_dict(project_collection).set_index('id').sort_values("created")
 
     def _quick_validate_metadata(self, metadata: Dict[str, Union[str, Dict]]):
+        """
+        """
         if type(metadata) != dict:
             raise ValueError(f"Metadata must be passed as a python dict, but {type(metadata)} was passed instead")
         required_keys = ["idno"]  # todo(gblackadder) what are the fields all datatypes must have
@@ -67,6 +73,8 @@ class MetadataEditor():
 
 
     def create_timeseries(self, metadata: Dict[str, Union[str, Dict]]):
+        """
+        """
         self._quick_validate_metadata(metadata)
 
         post_request_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor/create/timeseries"

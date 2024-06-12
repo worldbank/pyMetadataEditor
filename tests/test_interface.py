@@ -99,4 +99,3 @@ def test_create_timeseries(monkeypatch):
     monkeypatch.setattr(requests, 'request', mock_post)
     me = MetadataEditor(api_key='test')
     me.create_timeseries(metadata=metadata)
-
