@@ -10,6 +10,9 @@ from pymetadataeditor.interface import MetadataDict
 
 class MockResponse:
     def __init__(self, status_code: int, json_data: Optional[MetadataDict] = None):
+        """
+        Used to create mock responses from the API so that we don't actually call the API everytime we run tests
+        """
         self.status_code = status_code
         self.json_data = json_data if json_data is not None else {}
 
