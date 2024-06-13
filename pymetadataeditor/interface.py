@@ -4,13 +4,15 @@ import pandas as pd
 import requests
 from requests.exceptions import HTTPError
 
+from .schemas import validate_metadata
+
 MetadataDict = Dict[str, Union[str, Dict]]
 
 
 class MetadataEditor:
     def __init__(self, api_key: str):
         """
-        MetadataEditor allows you to list and create collections stored on https://metadataeditorqa.worldbank.org/
+        MetadataEditor allows you to list and create collections on the World Bank metadataeditorqa.
         First obtain an API key by logging into the editor (https://metadataeditorQA.worldbank.org) and go to your user
         profile page where you will see an option at the bottom to generate an API key.
 
@@ -24,11 +26,14 @@ class MetadataEditor:
         Then you can list and create new collections like so:
 
             me.list_collections()
-            me.create_timeseries(metadata={"idno": "<unique id of your metadata>", ...})
+            me.create_timeseries(metadata={"idno": "<unique id of your metadata>", <other metadata>})
         """
         if not isinstance(api_key, str):
             raise ValueError(f"api_key must be a string but a '{type(api_key)}' was passed")
         self.api_key = api_key
+
+    def get_api_key(self) -> str:
+        return self.api_key
 
     def _request(self, method: str, url: str, **kwargs) -> Dict:
         """
@@ -102,25 +107,6 @@ class MetadataEditor:
 
         return pd.DataFrame.from_dict(project_collection).set_index("id").sort_values("created")
 
-    def _quick_validate_metadata(self, metadata: MetadataDict):
-        """
-        Checks that the metadata contains the key information that all metadata must have, namely idno
-
-        Args:
-            metadata (dict): The metadata to be validated
-
-        Raises:
-            ValueError: If the metadata is deemed invalid for whatever reason.
-
-        """
-        if not isinstance(metadata, dict):
-            raise ValueError(f"Metadata must be passed as a python dictionary, but {type(metadata)} was passed instead")
-        required_keys = ["idno"]  # todo(gblackadder) what are the fields all datatypes must have
-
-        for key in required_keys:
-            if key not in metadata:
-                raise ValueError(f"Metadata is missing required key: '{key}'")
-
     def create_timeseries(self, metadata: MetadataDict):
         """
         Creates a record of your *timeseries* metadata on https://metadataeditorqa.worldbank.org/
@@ -128,7 +114,7 @@ class MetadataEditor:
         Args:
             metadata (dict): The timeseries metadata to be recorded
         """
-        self._quick_validate_metadata(metadata)
+        validate_metadata(metadata, "TimeSeries")
 
         post_request_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor/create/timeseries"
         self._post_request(post_request_url, metadata=metadata)

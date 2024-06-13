@@ -94,30 +94,27 @@ def test_list_collections(monkeypatch):
     assert actual_collections.columns == ["created"]
 
 
-def test__quick_validate_metadata():
-    me = MetadataEditor(api_key="test")
-
-    data_is_string = """{"idno": "GB123"}"""
-    with pytest.raises(ValueError):
-        me._quick_validate_metadata(data_is_string)
-
-    data_misses_idno = {}
-    with pytest.raises(ValueError):
-        me._quick_validate_metadata(data_misses_idno)
-
-    data_is_good = {"idno": "GB123"}
-    me._quick_validate_metadata(data_is_good)
-
-
 def test_create_timeseries(monkeypatch):
-    metadata = {
-        "idno": "GB123",
-        "series_description": {"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
-    }
-
     def mock_post(*args, **kwargs):
         return MockResponse(status_code=200)
 
     monkeypatch.setattr(requests, "request", mock_post)
+
     me = MetadataEditor(api_key="test")
-    me.create_timeseries(metadata=metadata)
+
+    metadata_no_series_description = {"idno": "GB123"}
+    with pytest.raises(ValueError):
+        me.create_timeseries(metadata=metadata_no_series_description)
+
+    metadata_series_has_no_idno = {
+        "idno": "GB123",
+        "series_description": {"doi": "string", "name": "Gordons Test", "display_name": "string"},
+    }
+    with pytest.raises(ValueError):
+        me.create_timeseries(metadata=metadata_series_has_no_idno)
+
+    metadata_good = {
+        "idno": "GB123",
+        "series_description": {"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
+    }
+    me.create_timeseries(metadata=metadata_good)
