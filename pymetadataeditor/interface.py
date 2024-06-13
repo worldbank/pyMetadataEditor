@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Union
 
 import pandas as pd
@@ -12,7 +13,7 @@ MetadataDict = Dict[str, Union[str, Dict]]
 class MetadataEditor:
     def __init__(self, api_key: str):
         """
-        MetadataEditor allows you to list and create collections on the World Bank metadataeditorqa.
+        MetadataEditor allows you to list and create projects on the World Bank metadataeditorqa.
         First obtain an API key by logging into the editor (https://metadataeditorQA.worldbank.org) and go to your user
         profile page where you will see an option at the bottom to generate an API key.
 
@@ -23,9 +24,9 @@ class MetadataEditor:
             api_key = "<the api key you generated on https://metadataeditorQA.worldbank.org>"
             me = MetadataEditor(api_key)
 
-        Then you can list and create new collections like so:
+        Then you can list and create new projects like so:
 
-            me.list_collections()
+            me.list_projects()
             me.create_timeseries(metadata={"idno": "<unique id of your metadata>", <other metadata>})
         """
         if not isinstance(api_key, str):
@@ -51,6 +52,7 @@ class MetadataEditor:
             Exception: If the request fails due to other HTTP errors, with details of the status code and response text.
             Exception: If any other unexpected error occurs during the request.
         """
+        method = method.lower()
         assert method in ["get", "post"], f"unknown method {method}"
         if method == "post":
             assert "json" in kwargs, "when using post, json cannot be none"
@@ -66,7 +68,7 @@ class MetadataEditor:
                 raise PermissionError(f"Access Denied. Check that the API key '{self.api_key}' is correct")
             else:
                 raise Exception(
-                    f"Error: Failed to get collections. Status code: {response.status_code} Response: {response.text}"
+                    f"Status Code: {response.status_code}, Response: {json.loads(response.text)['message']}"
                 ) from e
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {str(e)}") from e
@@ -93,19 +95,27 @@ class MetadataEditor:
         """
         self._request("post", url=url, json=metadata)
 
-    def list_collections(self) -> pd.DataFrame:
+    def list_projects(self) -> pd.DataFrame:
         """
-        Lists all the collections associated with your API key which are listed at
+        Lists all the projects associated with your API key which are listed at
         https://metadataeditorqa.worldbank.org/
 
         Returns:
-            pd.DataFrame: Collections sorted by the date on which they were created
+            pd.DataFrame: Projects sorted by the date on which they were created
         """
-        list_collections_get_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor"
-        response = self._get_request(list_collections_get_url)
-        project_collection = response["projects"]
+        list_projects_get_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor"
+        response = self._get_request(list_projects_get_url)
+        projects = response["projects"]
 
-        return pd.DataFrame.from_dict(project_collection).set_index("id").sort_values("created")
+        return pd.DataFrame.from_dict(projects).set_index("id").sort_values("created")
+
+    def get_project_by_id(self, id: Union[str, int]):
+        """"""
+        get_project_template = "https://metadataeditorqa.worldbank.org/index.php/api/editor/{}"
+        get_project_url = get_project_template.format(id)
+        response = self._get_request(get_project_url)
+        project_collection = response["project"]
+        return pd.Series(project_collection)
 
     def create_timeseries(self, metadata: MetadataDict):
         """

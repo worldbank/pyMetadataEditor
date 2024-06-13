@@ -9,16 +9,27 @@ from pymetadataeditor.interface import MetadataDict
 
 
 class MockResponse:
-    def __init__(self, status_code: int, json_data: Optional[MetadataDict] = None):
+    def __init__(self, status_code: int, error_message: Optional[str] = None, json_data: Optional[MetadataDict] = None):
         """
         Used to create mock responses from the API so that we don't actually call the API everytime we run tests
         """
         self.status_code = status_code
         self.json_data = json_data if json_data is not None else {}
+        self.text = error_message if error_message is not None else "{}"
+        self.response = requests.Response()
+        self.response.status_code = self.status_code
+        self.response._content = self.text.encode("utf-8")
+        self.response.headers["Content-Type"] = "application/json"
+        self.response.url = "https://example.com/api/resource"
 
     def raise_for_status(self):
         if self.status_code == 403:
             raise requests.exceptions.HTTPError("403 Client Error: Forbidden for url", response=self)
+        elif self.status_code == 400:
+            raise requests.exceptions.HTTPError(
+                "400 Client Error: Bad Request for url: example.com", response=self.response
+            )
+
         elif self.status_code != 200:
             raise requests.exceptions.HTTPError(f"{self.status_code} Error")
 
@@ -88,10 +99,39 @@ def test_list_collections(monkeypatch):
     monkeypatch.setattr(requests, "request", mock_get)
 
     me = MetadataEditor(api_key="test")
-    actual_collections = me.list_collections()
+    actual_collections = me.list_projects()
     assert type(actual_collections) == pd.DataFrame
     assert actual_collections.shape == (2, 1)
     assert actual_collections.columns == ["created"]
+
+
+def test_get_project_by_id(monkeypatch):
+    # id is bad
+
+    def mock_get(*args, **kwargs):
+        return MockResponse(
+            status_code=400,
+            json_data={},
+            error_message="""{"message": "You don't have permission to access this project"}""",
+        )
+
+    monkeypatch.setattr(requests, "request", mock_get)
+    me = MetadataEditor(api_key="test")
+    with pytest.raises(Exception) as e:
+        me.get_project_by_id(1)
+    assert str(e.value) == "Status Code: 400, Response: You don't have permission to access this project"
+
+    # id is good
+    collection = {"status": "success", "project": {"id": "1", "created": "2024-06-11T09:58:14-04:00"}}
+
+    def mock_get(*args, **kwargs):
+        return MockResponse(status_code=200, json_data=collection)
+
+    monkeypatch.setattr(requests, "request", mock_get)
+    me = MetadataEditor(api_key="test")
+    actual_project = me.get_project_by_id(2)
+    assert type(actual_project) == pd.Series
+    assert len(actual_project) == 2
 
 
 def test_create_timeseries(monkeypatch):
