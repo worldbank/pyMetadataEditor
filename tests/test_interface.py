@@ -142,19 +142,17 @@ def test_create_timeseries(monkeypatch):
 
     me = MetadataEditor(api_key="test")
 
-    metadata_no_series_description = {"idno": "GB123"}
-    with pytest.raises(ValueError):
-        me.create_timeseries(metadata=metadata_no_series_description)
+    # metadata no series description
+    with pytest.raises(TypeError):
+        me.create_timeseries(idno="GB123")
 
-    metadata_series_has_no_idno = {
-        "idno": "GB123",
-        "series_description": {"doi": "string", "name": "Gordons Test", "display_name": "string"},
-    }
+    # metadata series description has no idno
     with pytest.raises(ValueError):
-        me.create_timeseries(metadata=metadata_series_has_no_idno)
+        me.create_timeseries(
+            idno="GB123", series_description={"doi": "string", "name": "Gordons Test", "display_name": "string"}
+        )
 
-    metadata_good = {
-        "idno": "GB123",
-        "series_description": {"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
-    }
-    me.create_timeseries(metadata=metadata_good)
+    me.create_timeseries(
+        idno="GB123",
+        series_description={"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
+    )
