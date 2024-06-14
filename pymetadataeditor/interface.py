@@ -1,11 +1,26 @@
 import json
+import warnings
 from typing import Dict, List, Optional, Union
 
 import pandas as pd
 import requests
 from requests.exceptions import HTTPError
 
-from .schemas import Datacite, MetadataInformation, Provenance, SeriesDescription, Tag, validate_metadata
+from .schemas import (
+    Datacite,
+    MetadataInformation,
+    Provenance,
+    SeriesDescription,
+    Tag,
+    TimeSeriesMetadataSchema,
+    update_metadata,
+    validate_metadata,
+)
+
+warnings.filterwarnings(
+    "ignore", category=UserWarning, module="pydantic"
+)  # suppresses warning when metadata passed as dict instead of a pydantic object
+
 
 MetadataDict = Dict[str, Union[str, Dict]]
 
@@ -93,7 +108,7 @@ class MetadataEditor:
         Returns:
             Dict[str, str]: The JSON response from the server, parsed into a dictionary.
         """
-        self._request("post", url=url, json=metadata)
+        return self._request("post", url=url, json=metadata)
 
     def list_projects(self) -> pd.DataFrame:
         """
@@ -191,7 +206,61 @@ class MetadataEditor:
             "additional": additional,
         }
 
-        validate_metadata(metadata, "TimeSeries")
+        validate_metadata(metadata, TimeSeriesMetadataSchema)
 
         post_request_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor/create/timeseries"
-        self._post_request(post_request_url, metadata=metadata),
+        self._post_request(post_request_url, metadata=metadata)
+
+    def update_timeseries_by_id(
+        self,
+        id: int,
+        # idno: Optional[str] = None,
+        series_description: Optional[Union[Dict, SeriesDescription]] = None,
+        metadata_information: Optional[Union[Dict, MetadataInformation]] = None,
+        datacite: Optional[Union[Dict, Datacite]] = None,
+        provenance: Optional[List[Union[Dict, Provenance]]] = None,
+        tags: Optional[Union[Dict, List[Tag]]] = None,
+        additional: Optional[Dict] = None,
+    ):
+        """
+        Args:
+            id (int): the id of the project, not to be confused with the idno.
+            series_description (Optional[SeriesDescription or Dictionary]): Can be an instance of SeriesDescription
+                defined like SeriesDescription(idno="", name="", etc). Or as a dictionary like
+                {"idno": "", "name": "", etc}. Leave blank if you don't want to replace the existing values.
+            metadata_information (Optional[MetadataInformation or Dictionary]): Information on who generated the
+                documentation. Can be a MetadataInformation object or a dictionary. Leave blank if you don't want to
+                replace the existing values.
+            datacite (Optional[Datacite or Dictionary]): DataCite metadata for generating DOI. Can be a Datacite object
+                or a Dictionary. Leave blank if you don't want to replace the existing values.
+            provenance (Optional[List[Provenance or Dictionary]]): Can be a list of Provenance objects or a list of
+                dictionaries. Leave blank if you don't want to replace the existing values.
+            tags (Optional[List[Tag or Dictionary]]): Can be a list of Tag objects or a list of dictionaries.
+                Leave blank if you don't want to replace the existing values.
+            additional (Optional[Dictionary]): Any other custom metadata not covered by the schema. A dictionary.
+                Leave blank if you don't want to replace the existing values.
+
+        """
+        # todo(gblackadder) as implemented, if the user wants to update a single value within series_description, for
+        # example, they need to write out the entire series description, writing out again the elements they don't want
+        # changed. A good workflow would be to get metadata by id as a TimeSeriesMetadata object and help users update
+        # that object. But only if there is a user friendly way of doing that.
+
+        # todo(gblackadder) check that it's correct you can't update the idno. The documentation
+        #   https://metadataeditorqa.worldbank.org/api-documentation/editor/#operation/createTimeseries
+        #   implies you can but in my observation from calling the api, you cannot
+        ts = TimeSeriesMetadataSchema(**self.get_project_by_id(id)["metadata"])
+
+        update_metadata(
+            ts,
+            series_description=series_description,
+            metadata_information=metadata_information,
+            datacite=datacite,
+            provenance=provenance,
+            tags=tags,
+            additional=additional,
+        )
+
+        post_request_template = "https://metadataeditorqa.worldbank.org/index.php/api/editor/update/timeseries/{}"
+        post_request_url = post_request_template.format(id)
+        self._post_request(post_request_url, metadata=ts.model_dump())

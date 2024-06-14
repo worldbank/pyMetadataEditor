@@ -6,6 +6,7 @@ import requests
 
 from pymetadataeditor import MetadataEditor
 from pymetadataeditor.interface import MetadataDict
+from pymetadataeditor.schemas import SeriesDescription
 
 
 class MockResponse:
@@ -93,10 +94,10 @@ def test_list_collections(monkeypatch):
         ],
     }
 
-    def mock_get(*args, **kwargs):
+    def mock_response(*args, **kwargs):
         return MockResponse(status_code=200, json_data=collections)
 
-    monkeypatch.setattr(requests, "request", mock_get)
+    monkeypatch.setattr(requests, "request", mock_response)
 
     me = MetadataEditor(api_key="test")
     actual_collections = me.list_projects()
@@ -107,15 +108,14 @@ def test_list_collections(monkeypatch):
 
 def test_get_project_by_id(monkeypatch):
     # id is bad
-
-    def mock_get(*args, **kwargs):
+    def mock_response(*args, **kwargs):
         return MockResponse(
             status_code=400,
             json_data={},
             error_message="""{"message": "You don't have permission to access this project"}""",
         )
 
-    monkeypatch.setattr(requests, "request", mock_get)
+    monkeypatch.setattr(requests, "request", mock_response)
     me = MetadataEditor(api_key="test")
     with pytest.raises(Exception) as e:
         me.get_project_by_id(1)
@@ -124,10 +124,10 @@ def test_get_project_by_id(monkeypatch):
     # id is good
     collection = {"status": "success", "project": {"id": "1", "created": "2024-06-11T09:58:14-04:00"}}
 
-    def mock_get(*args, **kwargs):
+    def mock_response(*args, **kwargs):
         return MockResponse(status_code=200, json_data=collection)
 
-    monkeypatch.setattr(requests, "request", mock_get)
+    monkeypatch.setattr(requests, "request", mock_response)
     me = MetadataEditor(api_key="test")
     actual_project = me.get_project_by_id(2)
     assert type(actual_project) == pd.Series
@@ -135,10 +135,10 @@ def test_get_project_by_id(monkeypatch):
 
 
 def test_create_timeseries(monkeypatch):
-    def mock_post(*args, **kwargs):
+    def mock_response(*args, **kwargs):
         return MockResponse(status_code=200)
 
-    monkeypatch.setattr(requests, "request", mock_post)
+    monkeypatch.setattr(requests, "request", mock_response)
 
     me = MetadataEditor(api_key="test")
 
@@ -156,3 +156,35 @@ def test_create_timeseries(monkeypatch):
         idno="GB123",
         series_description={"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
     )
+
+
+def test_update_timeseries_by_id(monkeypatch):
+    series_description = SeriesDescription(idno="17", name="1")
+    metadata_information = {"title": "check we can pass in a dict as well as a pydantic object"}
+
+    # id is bad
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=400,
+            json_data={},
+            error_message="""{"message": "You don't have permission to access this project"}""",
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    me = MetadataEditor(api_key="test")
+    with pytest.raises(Exception) as e:
+        me.update_timeseries_by_id(1, series_description=series_description, metadata_information=metadata_information)
+    assert str(e.value) == "Status Code: 400, Response: You don't have permission to access this project"
+
+    # id is good
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=200,
+            json_data={
+                "project": {"metadata": {"idno": "12", "series_description": {"idno": "12", "name": "oldname"}}}
+            },
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    me = MetadataEditor(api_key="test")
+    me.update_timeseries_by_id(1, series_description=series_description, metadata_information=metadata_information)

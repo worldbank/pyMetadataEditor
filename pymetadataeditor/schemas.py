@@ -1,23 +1,31 @@
-from typing import Any, Dict, List, Optional
+import json
+from typing import Dict, List, Optional, Type, Union
 
-from pydantic import AnyUrl, BaseModel, Field, ValidationError
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field, ValidationError
 
 
-class Producer(BaseModel):
+class SchemaBaseModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+
+class Producer(SchemaBaseModel):
     name: Optional[str] = None
     abbr: Optional[str] = None
     affiliation: Optional[str] = None
     role: Optional[str] = None
 
 
-class VersionStatement(BaseModel):
+class VersionStatement(SchemaBaseModel):
     version: Optional[str] = None
     version_date: Optional[str] = None
     version_resp: Optional[str] = None
     version_notes: Optional[str] = None
 
 
-class AuthoringEntity(BaseModel):
+class AuthoringEntity(SchemaBaseModel):
     name: str
     affiliation: Optional[str] = None
     abbreviation: Optional[str] = None
@@ -25,7 +33,7 @@ class AuthoringEntity(BaseModel):
     uri: Optional[str] = None
 
 
-class Alias(BaseModel):
+class Alias(SchemaBaseModel):
     """
     The documentation https://metadataeditorqa.worldbank.org/api-documentation/editor/#operation/createTimeseries
     says that this is not required, but if aliases is not empty then it must contain some information
@@ -34,7 +42,7 @@ class Alias(BaseModel):
     alias: str
 
 
-class AlternateIdentifier(BaseModel):
+class AlternateIdentifier(SchemaBaseModel):
     identifier: str
     name: Optional[str] = None
     database: Optional[str] = None
@@ -42,30 +50,30 @@ class AlternateIdentifier(BaseModel):
     notes: Optional[str] = None
 
 
-class Language(BaseModel):
+class Language(SchemaBaseModel):
     name: Optional[str] = None
     code: Optional[str] = None
 
 
-class Dimension(BaseModel):
+class Dimension(SchemaBaseModel):
     name: Optional[str] = None
     label: str
     description: Optional[str] = None
 
 
-class Reference(BaseModel):
+class Reference(SchemaBaseModel):
     source: Optional[str] = None
     uri: AnyUrl
     note: Optional[str] = None
 
 
-class Concept(BaseModel):
+class Concept(SchemaBaseModel):
     name: str
     definition: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class DataCollection(BaseModel):
+class DataCollection(SchemaBaseModel):
     data_source: Optional[str] = None
     method: Optional[str] = None
     period: Optional[str] = None
@@ -73,7 +81,7 @@ class DataCollection(BaseModel):
     uri: Optional[str] = None
 
 
-class Vocabulary(BaseModel):
+class Vocabulary(SchemaBaseModel):
     id: Optional[str] = None
     name: str
     parent_id: Optional[str] = None
@@ -81,29 +89,29 @@ class Vocabulary(BaseModel):
     uri: Optional[AnyUrl] = None
 
 
-class Mandate(BaseModel):
+class Mandate(SchemaBaseModel):
     mandate: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class TimePeriod(BaseModel):
+class TimePeriod(SchemaBaseModel):
     start: Optional[str] = None
     end: Optional[str] = None
     notes: Optional[str] = None
 
 
-class RefCountry(BaseModel):
+class RefCountry(SchemaBaseModel):
     name: Optional[str] = None
     code: Optional[str] = None
 
 
-class GeographicUnit(BaseModel):
+class GeographicUnit(SchemaBaseModel):
     name: str
     code: Optional[str] = None
     type: Optional[str] = None
 
 
-class BoundingBox(BaseModel):
+class BoundingBox(SchemaBaseModel):
     """If a bounding box is given, aren't all the fields required?
     They're not listed as required on
         https://metadataeditorqa.worldbank.org/api-documentation/editor/#operation/createTimeseries
@@ -116,18 +124,18 @@ class BoundingBox(BaseModel):
     north: Optional[str] = None
 
 
-class Link(BaseModel):
+class Link(SchemaBaseModel):
     type: Optional[str] = None
     description: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class ApiDocumentation(BaseModel):
+class ApiDocumentation(SchemaBaseModel):
     description: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class OtherIdentifier(BaseModel):
+class OtherIdentifier(SchemaBaseModel):
     """
     why does this field contain an 'identifier' when authorid contains an 'id'
     Shouldn't we be consistent and call things one or the other?
@@ -138,12 +146,12 @@ class OtherIdentifier(BaseModel):
     identifier: Optional[str] = None
 
 
-class AuthorId(BaseModel):
+class AuthorId(SchemaBaseModel):
     type: Optional[str] = None
     id: Optional[str] = None
 
 
-class Author(BaseModel):
+class Author(SchemaBaseModel):
     first_name: Optional[str] = None
     initial: Optional[str] = None
     last_name: Optional[str] = None
@@ -152,13 +160,13 @@ class Author(BaseModel):
     full_name: Optional[str] = None
 
 
-class Dataset(BaseModel):
+class Dataset(SchemaBaseModel):
     idno: Optional[str] = None
     title: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class Source(BaseModel):
+class Source(SchemaBaseModel):
     idno: Optional[str] = None
     other_identifiers: Optional[List[OtherIdentifier]] = None
     type: Optional[str] = None
@@ -173,37 +181,37 @@ class Source(BaseModel):
     note: Optional[str] = None
 
 
-class Keyword(BaseModel):
+class Keyword(SchemaBaseModel):
     name: str
     vocabulary: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class Acronym(BaseModel):
+class Acronym(SchemaBaseModel):
     acronym: str
     expansion: str
     occurrence: Optional[int] = None
 
 
-class Erratum(BaseModel):
+class Erratum(SchemaBaseModel):
     date: Optional[str] = None
     description: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class Acknowledgement(BaseModel):
+class Acknowledgement(SchemaBaseModel):
     name: Optional[str] = None
     affiliation: Optional[str] = None
     role: Optional[str] = None
 
 
-class Note(BaseModel):
+class Note(SchemaBaseModel):
     note: Optional[str] = None
     type: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class RelatedIndicator(BaseModel):
+class RelatedIndicator(SchemaBaseModel):
     code: Optional[str] = None
     label: Optional[str] = None
     uri: Optional[AnyUrl] = None
@@ -211,14 +219,14 @@ class RelatedIndicator(BaseModel):
     type: Optional[str] = None
 
 
-class Compliance(BaseModel):
+class Compliance(SchemaBaseModel):
     standard: str
     abbreviation: Optional[str] = None
     custodian: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class Framework(BaseModel):
+class Framework(SchemaBaseModel):
     name: str
     abbreviation: Optional[str] = None
     custodian: Optional[str] = None
@@ -236,14 +244,14 @@ class Framework(BaseModel):
     notes: Optional[str] = None
 
 
-class SeriesGroup(BaseModel):
+class SeriesGroup(SchemaBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     version: Optional[str] = None
     uri: Optional[AnyUrl] = None
 
 
-class Contact(BaseModel):
+class Contact(SchemaBaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     position: Optional[str] = None
@@ -253,7 +261,7 @@ class Contact(BaseModel):
     uri: Optional[AnyUrl] = None
 
 
-class MetadataInformation(BaseModel):
+class MetadataInformation(SchemaBaseModel):
     title: Optional[str] = None
     idno: Optional[str] = None
     producers: Optional[List[Producer]] = None
@@ -261,7 +269,7 @@ class MetadataInformation(BaseModel):
     version_statement: Optional[VersionStatement] = None
 
 
-class SeriesDescription(BaseModel):
+class SeriesDescription(SchemaBaseModel):
     idno: str
     doi: Optional[str] = None
     name: str
@@ -336,20 +344,20 @@ class SeriesDescription(BaseModel):
     contacts: Optional[List[Contact]] = None
 
 
-class Creator(BaseModel):
+class Creator(SchemaBaseModel):
     name: str
     nameType: Optional[str] = Field(None, pattern=r"^(Personal|Organizational)$")
     givenName: Optional[str] = None
     familyName: Optional[str] = None
 
 
-class Title(BaseModel):
+class Title(SchemaBaseModel):
     title: str
     titleType: Optional[str] = Field(None, pattern=r"^(AlternativeTitle|Subtitle|TranslatedTitle|Other)$")
     lang: Optional[str] = None
 
 
-class Type(BaseModel):
+class ResourceType(SchemaBaseModel):
     resourceType: str
     resourceTypeGeneral: Optional[str] = Field(
         None,
@@ -357,7 +365,7 @@ class Type(BaseModel):
     )
 
 
-class Datacite(BaseModel):
+class Datacite(SchemaBaseModel):
     doi: Optional[str] = None
     prefix: Optional[str] = None
     suffix: Optional[str] = None
@@ -365,12 +373,14 @@ class Datacite(BaseModel):
     titles: Optional[List[Title]] = None
     publisher: Optional[str] = None
     publicationYear: Optional[str] = None
-    types: Optional[Type] = None  # the name suggests this should be an array but that's not what the documentation says
+    types: Optional[
+        ResourceType
+    ] = None  # the name suggests this should be an array but that's not what the documentation says
     url: Optional[AnyUrl] = None
     language: Optional[str] = None
 
 
-class OriginDescription(BaseModel):
+class OriginDescription(SchemaBaseModel):
     harvest_date: Optional[str] = None
     altered: Optional[bool] = None
     base_url: Optional[str] = None
@@ -379,16 +389,16 @@ class OriginDescription(BaseModel):
     metadata_namespace: Optional[str] = None
 
 
-class Provenance(BaseModel):
+class Provenance(SchemaBaseModel):
     origin_description: OriginDescription
 
 
-class Tag(BaseModel):
+class Tag(SchemaBaseModel):
     tag: Optional[str] = None
     tag_group: Optional[str] = None
 
 
-class TimeSeriesMetadataSchema(BaseModel):
+class TimeSeriesMetadataSchema(SchemaBaseModel):
     idno: str
     metadata_information: Optional[MetadataInformation] = None
     series_description: SeriesDescription
@@ -398,7 +408,7 @@ class TimeSeriesMetadataSchema(BaseModel):
     additional: Optional[dict] = None
 
 
-def format_errors(errors):
+def _format_errors(errors):
     formatted_errors = []
     for error in errors:
         loc = ".".join(str(x) for x in error["loc"])
@@ -407,27 +417,67 @@ def format_errors(errors):
     return "\n" + "\n".join(formatted_errors)
 
 
-def validate_metadata(metadata: Dict[str, Any], schema: str) -> None:
+def validate_metadata(metadata: Union[Dict, SchemaBaseModel, str], schema_definition: Type[SchemaBaseModel]) -> None:
     """
     Checks that the metadata contains the key information that all metadata must have, namely idno
 
     Args:
-        metadata (dict): The metadata to be validated
+        metadata (dict or SchemaBaseModel): The metadata to be validated
         schema (str): Type of metadata being passed, must be "TimeSeries"
 
     Raises:
         ValueError: If the metadata is deemed invalid for whatever reason.
 
     """
-    if not isinstance(metadata, dict):
-        raise ValueError(f"Metadata must be passed as a python dictionary, but {type(metadata)} was passed instead")
+    assert isinstance(schema_definition, type) and issubclass(schema_definition, BaseModel)
+    if not isinstance(metadata, (dict, SchemaBaseModel, str)):
+        raise ValueError(
+            "Metadata must be passed as a python dictionary or as a pydantic object or a json string, "
+            f"but {type(metadata)} was passed instead"
+        )
 
-    schemas = {"TimeSeries": TimeSeriesMetadataSchema}
-    assert schema in schemas.keys(), f"requested schema '{schema}' not in {list(schemas.keys())}"
-    schema_validator = schemas[schema]
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.decoder.JSONDecodeError as e:
+            raise json.decoder.JSONDecodeError(f"This string is not valid json: '{e.doc}'", doc=e.doc, pos=e.pos)
+    if isinstance(metadata, SchemaBaseModel):
+        metadata = metadata.model_dump()
     try:
         # Try to parse the input dictionary using MyModel
-        schema_validator(**metadata)
+        schema_definition(**metadata)
     except ValidationError as e:
-        formatted_error_message = format_errors(e.errors())
+        formatted_error_message = _format_errors(e.errors())
         raise ValueError(formatted_error_message) from None  # None stops it appearing like a new error
+
+
+def update_metadata(old_object: SchemaBaseModel, **kwargs):
+    """
+    Updates the metadata of a given Pydantic model instance with new values provided as keyword arguments.
+
+    Args:
+        old_object (SchemaBaseModel): The original instance of a Pydantic model to be updated.
+        **kwargs: Arbitrary keyword arguments representing the fields and their new values to update in the model.
+                  Only the fields with non-None values will be updated.
+
+    Returns:
+        SchemaBaseModel: A new instance of the Pydantic model with updated metadata.
+
+    Raises:
+        AttributeError: If a provided field name does not exist in the model.
+
+    Example:
+        class Example(SchemaBaseModel):
+            f1: int
+            f2: str
+
+        original = Example(f1=1, f2="old")
+        updated = update_metadata(original, f2="new")
+        print(updated)
+        # Output: Example(f1=1, f2='new')
+    """
+    new_object = old_object.model_copy()
+    for k, v in kwargs.items():
+        if v is not None:
+            new_object[k] = v
+    return new_object
