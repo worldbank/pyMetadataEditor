@@ -6,16 +6,9 @@ import pandas as pd
 import requests
 from requests.exceptions import HTTPError
 
-from .schemas import (
-    Datacite,
-    MetadataInformation,
-    Provenance,
-    SeriesDescription,
-    Tag,
-    TimeSeriesMetadataSchema,
-    update_metadata,
-    validate_metadata,
-)
+from pymetadataeditor.tools import update_metadata, validate_metadata
+
+from .schemas import Datacite, MetadataInformation, Provenance, SeriesDescription, Tag, TimeSeriesMetadataSchema
 
 warnings.filterwarnings(
     "ignore", category=UserWarning, module="pydantic"
