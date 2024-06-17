@@ -1,4 +1,3 @@
-import json
 import warnings
 from typing import Dict, List, Optional, Union
 
@@ -44,7 +43,9 @@ class MetadataEditor:
     def get_api_key(self) -> str:
         return self.api_key
 
-    def _request(self, method: str, url: str, **kwargs) -> Dict:
+    def _request(
+        self, method: str, url: str, json: Optional[MetadataDict] = None, id: Optional[Union[int, str]] = None
+    ) -> Dict:
         """
         Sends a GET or POST request to the specified URL with the API key in the headers and returns the JSON response.
 
@@ -62,18 +63,26 @@ class MetadataEditor:
         """
         method = method.lower()
         assert method in ["get", "post"], f"unknown method {method}"
+        request_kwargs = {}
         if method == "post":
-            assert "json" in kwargs, "when using post, json cannot be none"
+            assert "json" != None, "when using post, json cannot be none"
+            request_kwargs["json"] = json
 
         if not url.startswith("https://"):
             raise ValueError(f"URL must start with 'https://' not {url[:8]}")
 
+        if "{" in url:
+            assert id is not None, "If passing a url format, an id must be passed"
+            url = url.format(id)
+
         try:
-            response = requests.request(method, url, headers={"x-api-key": self.api_key}, **kwargs)
+            response = requests.request(method, url, headers={"x-api-key": self.api_key}, **request_kwargs)
             response.raise_for_status()
         except HTTPError as e:
             if response.status_code == 403:
-                raise PermissionError(f"Access Denied. Check that the API key '{self.api_key}' is correct")
+                raise PermissionError(f"Access Denied. Check that the API key '{self.api_key}' is correct") from None
+            elif response.status_code == 400 and id is not None:
+                raise PermissionError(f"Access Denied. Check that the id '{id}' is correct") from None
             else:
                 raise Exception(
                     f"Status Code: {response.status_code}, Response: {json.loads(response.text)['message']}"
@@ -82,7 +91,7 @@ class MetadataEditor:
             raise Exception(f"An unexpected error occurred: {str(e)}") from e
         return response.json()
 
-    def _get_request(self, url: str) -> Dict:
+    def _get_request(self, url: str, id: Optional[Union[int, str]] = None) -> Dict:
         """
         Args:
             url (str): The URL to which the GET request is sent.
@@ -90,9 +99,9 @@ class MetadataEditor:
         Returns:
             Dict[str, str]: The JSON response from the server, parsed into a dictionary.
         """
-        return self._request("get", url=url)
+        return self._request("get", url=url, id=id)
 
-    def _post_request(self, url: str, metadata: MetadataDict):
+    def _post_request(self, url: str, metadata: MetadataDict, id: Union[int, str] = None):
         """
         Args:
             url (str): The URL to which the POST request is sent.
@@ -101,7 +110,7 @@ class MetadataEditor:
         Returns:
             Dict[str, str]: The JSON response from the server, parsed into a dictionary.
         """
-        return self._request("post", url=url, json=metadata)
+        return self._request("post", url=url, id=id, json=metadata)
 
     def list_projects(self) -> pd.DataFrame:
         """
@@ -127,8 +136,7 @@ class MetadataEditor:
         """
         #  todo(gblackadder) we could implement a get project by **idno** by using list projects and then filtering
         get_project_template = "https://metadataeditorqa.worldbank.org/index.php/api/editor/{}"
-        get_project_url = get_project_template.format(id)
-        response = self._get_request(get_project_url)
+        response = self._get_request(get_project_template, id=id)
         project_collection = response["project"]
         return pd.Series(project_collection)
 
@@ -200,9 +208,10 @@ class MetadataEditor:
         }
 
         validate_metadata(metadata, TimeSeriesMetadataSchema)
+        ts = TimeSeriesMetadataSchema(**metadata)
 
         post_request_url = "https://metadataeditorqa.worldbank.org/index.php/api/editor/create/timeseries"
-        self._post_request(post_request_url, metadata=metadata)
+        self._post_request(post_request_url, metadata=ts.model_dump(exclude_none=True, exclude_unset=True))
 
     def update_timeseries_by_id(
         self,
@@ -242,9 +251,18 @@ class MetadataEditor:
         # todo(gblackadder) check that it's correct you can't update the idno. The documentation
         #   https://metadataeditorqa.worldbank.org/api-documentation/editor/#operation/createTimeseries
         #   implies you can but in my observation from calling the api, you cannot
-        ts = TimeSeriesMetadataSchema(**self.get_project_by_id(id)["metadata"])
+        metadata = self.get_project_by_id(id)["metadata"]
+        ts = TimeSeriesMetadataSchema(
+            idno=metadata["idno"],
+            metadata_information=metadata.get("metadata_information", None),
+            series_description=metadata.get("series_description", None),
+            datacite=metadata.get("datacite", None),
+            provenance=metadata.get("provenance", None),
+            tags=metadata.get("tags", None),
+            additional=metadata.get("additional", None),
+        )
 
-        update_metadata(
+        ts = update_metadata(
             ts,
             series_description=series_description,
             metadata_information=metadata_information,
@@ -255,5 +273,4 @@ class MetadataEditor:
         )
 
         post_request_template = "https://metadataeditorqa.worldbank.org/index.php/api/editor/update/timeseries/{}"
-        post_request_url = post_request_template.format(id)
-        self._post_request(post_request_url, metadata=ts.model_dump())
+        self._post_request(post_request_template, id=id, metadata=ts.model_dump(exclude_none=True, exclude_unset=True))

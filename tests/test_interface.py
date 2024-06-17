@@ -119,7 +119,7 @@ def test_get_project_by_id(monkeypatch):
     me = MetadataEditor(api_key="test")
     with pytest.raises(Exception) as e:
         me.get_project_by_id(1)
-    assert str(e.value) == "Status Code: 400, Response: You don't have permission to access this project"
+    assert str(e.value) == "Access Denied. Check that the id '1' is correct"
 
     # id is good
     collection = {"status": "success", "project": {"id": "1", "created": "2024-06-11T09:58:14-04:00"}}
@@ -174,7 +174,7 @@ def test_update_timeseries_by_id(monkeypatch):
     me = MetadataEditor(api_key="test")
     with pytest.raises(Exception) as e:
         me.update_timeseries_by_id(1, series_description=series_description, metadata_information=metadata_information)
-    assert str(e.value) == "Status Code: 400, Response: You don't have permission to access this project"
+    assert str(e.value) == "Access Denied. Check that the id '1' is correct"
 
     # id is good
     def mock_response(*args, **kwargs):
