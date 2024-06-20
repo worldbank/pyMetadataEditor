@@ -1,18 +1,9 @@
 import json
 from typing import Dict, Type, Union
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from pymetadataeditor.schemas import SchemaBaseModel
-
-
-def _format_errors(errors):
-    formatted_errors = []
-    for error in errors:
-        loc = ".".join(str(x) for x in error["loc"])
-        msg = f"{error['type']}: {loc} {error['msg'].lower()}"
-        formatted_errors.append(msg)
-    return "\n" + "\n".join(formatted_errors)
 
 
 def validate_metadata(metadata: Union[Dict, SchemaBaseModel, str], schema_definition: Type[SchemaBaseModel]) -> None:
@@ -40,13 +31,8 @@ def validate_metadata(metadata: Union[Dict, SchemaBaseModel, str], schema_defini
         except json.decoder.JSONDecodeError as e:
             raise json.decoder.JSONDecodeError(f"This string is not valid json: '{e.doc}'", doc=e.doc, pos=e.pos)
     if isinstance(metadata, SchemaBaseModel):
-        metadata = metadata.model_dump()
-    try:
-        # Try to parse the input dictionary using MyModel
-        schema_definition(**metadata)
-    except ValidationError as e:
-        formatted_error_message = _format_errors(e.errors())
-        raise ValueError(formatted_error_message) from None  # None stops it appearing like a new error
+        metadata = metadata.model_dump()  # SchemaBaseModel validates on assignment so shouldn't need to be re-validated
+    schema_definition.model_validate(metadata)
 
 
 def update_metadata(old_object: SchemaBaseModel, **kwargs):

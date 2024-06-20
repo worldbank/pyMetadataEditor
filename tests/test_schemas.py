@@ -27,14 +27,20 @@ def test_SchemaBaseModel():
 
 def test_validate_metadata_TimeSeries():
     metadata_is_empty = {}
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValidationError) as e:
         validate_metadata(metadata_is_empty, TimeSeriesMetadataSchema)
-    assert str(e.value) == "\nmissing: idno field required\nmissing: series_description field required"
+    assert e.value.error_count() == 2
+    assert e.value.errors()[0]["loc"][0] == "idno"
+    assert e.value.errors()[0]["type"] == "missing"
+    assert e.value.errors()[1]["loc"][0] == "series_description"
+    assert e.value.errors()[1]["type"] == "missing"
 
     idno_is_wrong_type = {"idno": 17, "series_description": {"idno": "18", "name": "test"}}
     with pytest.raises(ValueError) as e:
         validate_metadata(idno_is_wrong_type, TimeSeriesMetadataSchema)
-    assert str(e.value) == "\nstring_type: idno input should be a valid string"
+    assert e.value.error_count() == 1
+    assert e.value.errors()[0]["loc"][0] == "idno"
+    assert e.value.errors()[0]["type"] == "string_type"
 
     minimally_good_metadata = {"idno": "17", "series_description": {"idno": "18", "name": "test"}}
     validate_metadata(minimally_good_metadata, TimeSeriesMetadataSchema)
@@ -45,7 +51,10 @@ def test_validate_metadata_TimeSeries():
     }
     with pytest.raises(ValueError) as e:
         validate_metadata(should_be_list, TimeSeriesMetadataSchema)
-    assert str(e.value) == "\nlist_type: series_description.definition_references input should be a valid list"
+    assert e.value.error_count() == 1
+    assert e.value.errors()[0]["loc"][0] == "series_description"
+    assert e.value.errors()[0]["loc"][1] == "definition_references"
+    assert e.value.errors()[0]["type"] == "list_type"
 
     bad_uri = {
         "idno": "17",
@@ -53,10 +62,12 @@ def test_validate_metadata_TimeSeries():
     }
     with pytest.raises(ValueError) as e:
         validate_metadata(bad_uri, TimeSeriesMetadataSchema)
-    assert (
-        str(e.value) == "\nurl_parsing: series_description.definition_references.0.uri input should be a valid url, "
-        "relative url without a base"
-    )
+    assert e.value.error_count() == 1
+    assert e.value.errors()[0]["loc"][0] == "series_description"
+    assert e.value.errors()[0]["loc"][1] == "definition_references"
+    assert e.value.errors()[0]["loc"][2] == 0
+    assert e.value.errors()[0]["loc"][3] == "uri"
+    assert e.value.errors()[0]["type"] == "url_parsing"
 
     good_uri = {
         "idno": "17",
