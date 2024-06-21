@@ -1,4 +1,6 @@
 import warnings
+from json import JSONDecodeError
+from numbers import Number
 from typing import Annotated, Dict, List, Optional, Union
 
 import pandas as pd
@@ -15,13 +17,13 @@ warnings.filterwarnings(
     "ignore", category=UserWarning, module="pydantic"
 )  # suppresses warning when metadata passed as dict instead of a pydantic object
 
+MetadataDict = Dict[str, Union[str, Number, "MetadataDict", List["MetadataDict"]]]
 
-MetadataDict = Dict[str, Union[str, Dict]]
 
-HttpsUrl = Annotated[
-    Url,
-    UrlConstraints(max_length=2083, allowed_schemes=["https"]),
-]
+class DeleteNotAppliedError(Exception):
+    def __init__(self, message="Delete request not accepted by system.", response=None):
+        super().__init__(message)
+        self.response = response
 
 
 class MetadataEditor(BaseModel):
@@ -45,7 +47,10 @@ class MetadataEditor(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    api_url: HttpsUrl
+    api_url: Annotated[
+        Url,
+        UrlConstraints(max_length=2083, allowed_schemes=["https"]),
+    ]
     api_key: str
 
     @model_validator(mode="after")
@@ -115,17 +120,17 @@ class MetadataEditor(BaseModel):
     def _get_request(self, pth: str, id: Optional[Union[int, str]] = None) -> Dict:
         """
         Args:
-            pth (str): The path appended to the API_URL to which the GET or POST request is sent.
+            pth (str): The path appended to the API_URL to which the GET request is sent.
 
         Returns:
             Dict[str, str]: The JSON response from the server, parsed into a dictionary.
         """
         return self._request("get", pth=pth, id=id)
 
-    def _post_request(self, pth: str, metadata: MetadataDict, id: Union[int, str] = None):
+    def _post_request(self, pth: str, metadata: Optional[MetadataDict] = None, id: Optional[Union[int, str]] = None):
         """
         Args:
-            pth (str): The path appended to the API_URL to which the GET or POST request is sent.
+            pth (str): The path appended to the API_URL to which the POST request is sent.
             metadata (dict): The metadata to be sent with the POST request.
 
         Returns:
@@ -148,7 +153,7 @@ class MetadataEditor(BaseModel):
             return pd.DataFrame()
         return pd.DataFrame.from_dict(projects).set_index("id").sort_values("created")
 
-    def get_project_by_id(self, id: int):
+    def get_project_by_id(self, id: int) -> pd.Series:
         """
         Args:
             id (int): the id of the project, not to be confused with the idno.
@@ -160,6 +165,34 @@ class MetadataEditor(BaseModel):
         get_project_template = "/editor/{}"
         response = self._get_request(get_project_template, id=id)
         return pd.Series(response["project"])
+
+    def delete_project_by_id(self, id: int):
+        """
+        Checks the project exists, deletes it, then checks it was deleted.
+
+        Args:
+            id (int): the id of the project, not to be confused with the idno.
+
+        Raises:
+            DeleteNotAppliedError: This can be the result of system admins blocking data deletion
+        """
+        # first check that the project is there to be deleted
+        self.get_project_by_id(id=id)
+
+        pth = "editor/delete/{}"
+        try:
+            response = self._post_request(pth=pth, id=id)
+            response.json()
+        except JSONDecodeError:
+            pass
+
+        # check that the entity was deleted
+        try:
+            self.get_project_by_id(id=id)
+        except PermissionError:
+            pass  # evidently the entity was deleted because now it can't be found
+        else:
+            raise DeleteNotAppliedError()
 
     def create_timeseries(
         self,

@@ -1,4 +1,5 @@
-from typing import Optional
+from json import JSONDecodeError
+from typing import List, Optional, Union
 
 import pandas as pd
 import pytest
@@ -6,18 +7,26 @@ import requests
 from pydantic import ValidationError
 
 from pymetadataeditor import MetadataEditor
-from pymetadataeditor.interface import MetadataDict
+from pymetadataeditor.interface import DeleteNotAppliedError, MetadataDict
 from pymetadataeditor.schemas import SeriesDescription
 
 
 class MockResponse:
-    def __init__(self, status_code: int, error_message: Optional[str] = None, json_data: Optional[MetadataDict] = None):
+    def __init__(
+        self,
+        status_code: int,
+        error_message: Optional[str] = None,
+        json_data: Optional[MetadataDict] = None,
+        raise_json_decode_error: bool = False,
+    ):
         """
         Used to create mock responses from the API so that we don't actually call the API everytime we run tests
         """
         self.status_code = status_code
         self.json_data = json_data if json_data is not None else {}
         self.text = error_message if error_message is not None else "{}"
+        self.raise_json_decode_error = raise_json_decode_error
+
         self.response = requests.Response()
         self.response.status_code = self.status_code
         self.response._content = self.text.encode("utf-8")
@@ -38,6 +47,8 @@ class MockResponse:
             raise requests.exceptions.HTTPError(f"{self.status_code} Error")
 
     def json(self) -> MetadataDict:
+        if self.raise_json_decode_error:
+            raise JSONDecodeError(msg="could not decode", doc="...", pos=2)
         if self.json_data is not None:
             return self.json_data
         else:
@@ -210,3 +221,69 @@ def test_update_timeseries_by_id(monkeypatch, metadata_editor):
     metadata_editor.update_timeseries_by_id(
         1, series_description=series_description, metadata_information=metadata_information
     )
+
+
+class MockGetProjectById:
+    def __init__(self, passes: Union[bool, List[bool]]):
+        self.passes = passes
+
+    def __call__(self, *args, **kwargs):
+        if isinstance(self.passes, list):
+            passes = self.passes.pop(0)
+        else:
+            passes = self.passes
+        if passes:
+            return True
+        else:
+            raise PermissionError
+
+
+def test_delete_project_by_id(monkeypatch, metadata_editor):
+    """
+    This feels like a bad test - it's testing the implementation instead of focusing on the functionality
+       But then, because of all the mocking that happens, maybe that's how it has to be?
+       Then the functionality will be tested in an integration test
+    """
+
+    # raises an error when there is no such project to delete
+    monkeypatch.setattr(MetadataEditor, "get_project_by_id", MockGetProjectById(False))
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=400,
+            error_message="""{"message": "You don't have permission to access this project"}""",
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    with pytest.raises(Exception):
+        metadata_editor.delete_project_by_id(1)
+
+    # raises DeleteNotAppliedError when request was good but the json was bad
+    #   and the project is still there
+    monkeypatch.setattr(MetadataEditor, "get_project_by_id", MockGetProjectById([True, True]))
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(status_code=200, raise_json_decode_error=True)
+
+    monkeypatch.setattr(MetadataEditor, "_post_request", mock_response)
+    with pytest.raises(DeleteNotAppliedError):
+        metadata_editor.delete_project_by_id(1)
+
+    # the project was deleted even though the json was bad
+    monkeypatch.setattr(MetadataEditor, "get_project_by_id", MockGetProjectById([True, False]))
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(status_code=200, raise_json_decode_error=True)
+
+    monkeypatch.setattr(MetadataEditor, "_post_request", mock_response)
+    metadata_editor.delete_project_by_id(1)
+
+    # the project was deleted
+    monkeypatch.setattr(MetadataEditor, "get_project_by_id", MockGetProjectById([True, False]))
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(status_code=200, raise_json_decode_error=False)
+
+    monkeypatch.setattr(MetadataEditor, "_post_request", mock_response)
+    monkeypatch.setattr(MetadataEditor, "_post_request", mock_response)
+    metadata_editor.delete_project_by_id(1)

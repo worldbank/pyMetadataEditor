@@ -12,17 +12,28 @@ def test_SchemaBaseModel():
 
     example = SubClassTest(f1=1, f2="two")
 
-    # can update via assignment like a dictionary
+    # can update
+    example.f2 = "two_again"
+    assert example.f2 == "two_again"
+
+    # and will validate on that update
+    with pytest.raises(ValidationError):
+        example.f2 = 2
+
+    # can update like a dictionary
     example["f1"] = -1
     assert example.f1 == -1
 
-    # won't accept undefined values
-    with pytest.raises(ValidationError):
-        # won't accept undefined in updates...
-        example["f3"] = 3
+    # # It's actually not the case that that additional fields are not allowed
+    # # And the json schema definition can say "additionalProperties": false if that's the case
 
-        # nor at instantiation
-        SubClassTest(f1=1, f2="two", f3=3)
+    # # won't accept undefined values in updates...
+    # with pytest.raises(ValidationError):
+    #     example["f3"] = 3
+
+    # # ...nor at instantiation
+    # with pytest.raises(ValidationError):
+    #     SubClassTest(f1=1, f2="two", f3=3)
 
 
 def test_validate_metadata_TimeSeries():
