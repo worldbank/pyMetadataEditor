@@ -1,9 +1,15 @@
 import json
 from typing import Dict, Type, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-from pymetadataeditor.schemas import SchemaBaseModel
+
+class SchemaBaseModel(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)  # is a subclass has a model_config then this will be overridden
+
+    def __setitem__(self, key, value):
+        """Allow dict like setting: Model[key] = value"""
+        setattr(self, key, value)
 
 
 def validate_metadata(metadata: Union[Dict, SchemaBaseModel, str], schema_definition: Type[SchemaBaseModel]) -> None:

@@ -1,0 +1,21 @@
+# Source:
+
+Timeseries (accessed 20June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/timeseries-schema.json
+
+Datacite (accessed 20June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/datacite-schema.json
+
+Provenance (accessed 20June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/provenance-schema.json
+
+
+# todo: 
+
+* Right now running datamodel-codegen with a link to the web definitions of these json schemas doesn't work because of issues with the links inside timeseries-schema.json to the datacite-schema.json and provenance-schema.json schemas. If the versions at the above sources are the "source of truth" then we should use them without having to save copies.
+
+* Update the timeseries.series_description.authoring_entity.abbreviation and series_description.authoring_entity.email to have a type
+
+* We should update the json schemas for URL and URI fields so that they can't be just any string but must be valid URI "uri": {
+                                "title": "URI",
+                                "description": "URI",
+                                "type": "string",
+                                "format": "uri"
+                            },

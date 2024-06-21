@@ -9,7 +9,7 @@ from requests.exceptions import HTTPError, SSLError
 
 from pymetadataeditor.tools import update_metadata, validate_metadata
 
-from .schemas import Datacite, MetadataInformation, Provenance, SeriesDescription, Tag, TimeSeriesMetadataSchema
+from .schemas import DataciteSchema, MetadataInformation, ProvenanceSchema, SeriesDescription, Tag, TimeseriesSchema
 
 warnings.filterwarnings(
     "ignore", category=UserWarning, module="pydantic"
@@ -166,8 +166,8 @@ class MetadataEditor(BaseModel):
         idno: str,
         series_description: Union[Dict, SeriesDescription],
         metadata_information: Optional[Union[Dict, MetadataInformation]] = None,
-        datacite: Optional[Union[Dict, Datacite]] = None,
-        provenance: Optional[List[Union[Dict, Provenance]]] = None,
+        datacite: Optional[Union[Dict, DataciteSchema]] = None,
+        provenance: Optional[List[Union[Dict, ProvenanceSchema]]] = None,
         tags: Optional[Union[Dict, List[Tag]]] = None,
         additional: Optional[Dict] = None,
     ):
@@ -180,10 +180,10 @@ class MetadataEditor(BaseModel):
                 SeriesDescription(idno="", name="", etc). Or as a dictionary like {"idno": "", "name": "", etc}
             metadata_information (Optional[MetadataInformation or Dictionary]): Information on who generated the
                 documentation. Can be a MetadataInformation object or a dictionary. Defaults to None
-            datacite (Optional[Datacite or Dictionary]): DataCite metadata for generating DOI. Can be a Datacite object
-                or a Dictionary. Defaults to None.
-            provenance (Optional[List[Provenance or Dictionary]]): Can be a list of Provenance objects or a list of
-                dictionaries. Defaults to None.
+            datacite (Optional[DataciteSchema or Dictionary]): DataCite metadata for generating DOI. Can be a
+                DataciteSchema object or a Dictionary. Defaults to None.
+            provenance (Optional[List[ProvenanceSchema or Dictionary]]): Can be a list of ProvenanceSchema objects or a
+                list of dictionaries. Defaults to None.
             tags (Optional[List[Tag or Dictionary]]): Can be a list of Tag objects or a list of dictionaries.
                 Defaults to None.
             additional (Optional[Dictionary]): Any other custom metadata not covered by the schema. A dictionary.
@@ -192,13 +192,13 @@ class MetadataEditor(BaseModel):
         Examples:
         >>> from pymetadataeditor.schemas import (SeriesDescription,
         ...                                       MetadataInformation,
-        ...                                       Datacite,
-        ...                                       Provenance,
-        ...                                       Provenance,
+        ...                                       DataciteSchema,
+        ...                                       ProvenanceSchema,
+        ...                                       ProvenanceSchema,
         ...                                       Tag)
         >>> series_description = SeriesDescription(idno = "TS001", name = "Sample Timeseries")
         >>> metadata_information = MetadataInformation(title="Example of a Timeseries")
-        >>> datacite = Datacite(doi="10.1234/sample.doi")
+        >>> datacite = DataciteSchema(doi="10.1234/sample.doi")
         >>> tags = [Tag(tag="tag1"), Tag(tag="tag2", tag_group="example group")]
         >>> additional = {"key1": "value1", "key2": "value2"}
 
@@ -228,8 +228,8 @@ class MetadataEditor(BaseModel):
             "additional": additional,
         }
 
-        validate_metadata(metadata, TimeSeriesMetadataSchema)
-        ts = TimeSeriesMetadataSchema(**metadata)
+        validate_metadata(metadata, TimeseriesSchema)
+        ts = TimeseriesSchema(**metadata)
 
         post_request_pth = "/editor/create/timeseries"
         self._post_request(pth=post_request_pth, metadata=ts.model_dump(exclude_none=True, exclude_unset=True))
@@ -240,8 +240,8 @@ class MetadataEditor(BaseModel):
         # idno: Optional[str] = None,
         series_description: Optional[Union[Dict, SeriesDescription]] = None,
         metadata_information: Optional[Union[Dict, MetadataInformation]] = None,
-        datacite: Optional[Union[Dict, Datacite]] = None,
-        provenance: Optional[List[Union[Dict, Provenance]]] = None,
+        datacite: Optional[Union[Dict, DataciteSchema]] = None,
+        provenance: Optional[List[Union[Dict, ProvenanceSchema]]] = None,
         tags: Optional[Union[Dict, List[Tag]]] = None,
         additional: Optional[Dict] = None,
     ):
@@ -254,10 +254,10 @@ class MetadataEditor(BaseModel):
             metadata_information (Optional[MetadataInformation or Dictionary]): Information on who generated the
                 documentation. Can be a MetadataInformation object or a dictionary. Leave blank if you don't want to
                 replace the existing values.
-            datacite (Optional[Datacite or Dictionary]): DataCite metadata for generating DOI. Can be a Datacite object
-                or a Dictionary. Leave blank if you don't want to replace the existing values.
-            provenance (Optional[List[Provenance or Dictionary]]): Can be a list of Provenance objects or a list of
-                dictionaries. Leave blank if you don't want to replace the existing values.
+            datacite (Optional[DataciteSchema or Dictionary]): DataCite metadata for generating DOI. Can be a
+                DataciteSchema object or a Dictionary. Leave blank if you don't want to replace the existing values.
+            provenance (Optional[List[ProvenanceSchema or Dictionary]]): Can be a list of ProvenanceSchema objects or a
+                list of dictionaries. Leave blank if you don't want to replace the existing values.
             tags (Optional[List[Tag or Dictionary]]): Can be a list of Tag objects or a list of dictionaries.
                 Leave blank if you don't want to replace the existing values.
             additional (Optional[Dictionary]): Any other custom metadata not covered by the schema. A dictionary.
@@ -273,7 +273,7 @@ class MetadataEditor(BaseModel):
         #   https://metadataeditorqa.worldbank.org/api-documentation/editor/#operation/createTimeseries
         #   implies you can but in my observation from calling the api, you cannot
         metadata = self.get_project_by_id(id)["metadata"]
-        ts = TimeSeriesMetadataSchema(
+        ts = TimeseriesSchema(
             idno=metadata["idno"],
             metadata_information=metadata.get("metadata_information", None),
             series_description=metadata.get("series_description", None),

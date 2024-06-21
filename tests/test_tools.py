@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from pymetadataeditor.schemas import SchemaBaseModel, SeriesDescription
-from pymetadataeditor.tools import update_metadata, validate_metadata
+from pymetadataeditor.schemas import SeriesDescription
+from pymetadataeditor.tools import SchemaBaseModel, update_metadata, validate_metadata
 
 
 def test_validate_metadata():
