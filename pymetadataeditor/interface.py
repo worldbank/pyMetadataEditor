@@ -110,11 +110,9 @@ class MetadataEditor(BaseModel):
             elif response.status_code == 400 and id is not None:
                 raise PermissionError(f"Access to this id is denied. Check that the id '{id}' is correct") from None
             else:
-                raise Exception(
-                    f"Status Code: {response.status_code}, Response: {json.loads(response.text)['message']}"
-                ) from e
-        except Exception as e:
-            raise Exception(f"An unexpected error occurred: {str(e)}") from e
+                raise Exception(f"Status Code: {response.status_code}, Response: {response.text}") from e
+        # except Exception as e:
+        #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
         return response.json()
 
     def _get_request(self, pth: str, id: Optional[Union[int, str]] = None) -> Dict:
@@ -244,13 +242,6 @@ class MetadataEditor(BaseModel):
         ...     additional=additional
         ... )
         """
-
-        # todo(gblackadder): question - why does pyNada create_timeseries_dataset include args:
-        #        repositroy_id, access_policy,  data_remote_url,  published
-        #   that aren't in the schema, and doesn't include args that are:
-        #        datacite, provenance, tags
-        #   https://metadataeditorqa.worldbank.org/api-documentation/editor/#tag/Timeseries
-
         metadata = {
             "idno": idno,
             "metadata_information": metadata_information,
