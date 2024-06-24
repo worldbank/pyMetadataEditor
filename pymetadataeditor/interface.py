@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, UrlConstraints, model_validator
 from pydantic_core import Url
 from requests.exceptions import HTTPError, SSLError
 
-from pymetadataeditor.tools import update_metadata, validate_metadata
+from pymetadataeditor.tools import SchemaBaseModel, update_metadata, validate_metadata
 
 from .schemas import DataciteSchema, MetadataInformation, ProvenanceSchema, SeriesDescription, Tag, TimeseriesSchema
 
@@ -104,9 +104,7 @@ class MetadataEditor(BaseModel):
                 )
                 raise HTTPError(error_msg) from None
             elif response.status_code == 403:
-                raise PermissionError(
-                    f"Access to that URL is denied. " f"Check that the API key '{self.api_key}' is correct"
-                ) from None
+                raise PermissionError("Access to that URL is denied. " "Check that the API key is correct") from None
             elif response.status_code == 400 and id is not None:
                 raise PermissionError(f"Access to this id is denied. Check that the id '{id}' is correct") from None
             else:
@@ -163,6 +161,31 @@ class MetadataEditor(BaseModel):
         get_project_template = "/editor/{}"
         response = self._get_request(get_project_template, id=id)
         return pd.Series(response["project"])
+
+    def get_project_metadata_by_id(
+        self, id: int, as_dictionary: bool = False, exclude_unset: bool = True
+    ) -> Union[MetadataDict, SchemaBaseModel]:
+        project = self.get_project_by_id(id=id)
+        project_type = project["type"]
+        valid_types = {"timeseries": TimeseriesSchema}
+        assert project_type in valid_types, (
+            f"this project is listed as a '{project_type}' type project but this is"
+            f" unknown. Projects must be one of {valid_types.keys()}"
+        )
+        metadata_object = valid_types[project_type](**project["metadata"])
+        if as_dictionary:
+            return metadata_object.model_dump(exclude_none=exclude_unset, exclude_unset=exclude_unset)
+        else:
+            return metadata_object
+
+    def create_basic_timeseries_metadata(
+        self, idno: str, name: str, as_dictionary: bool = False
+    ) -> Union[MetadataDict, SchemaBaseModel]:
+        ts = TimeseriesSchema(idno=idno, series_description=SeriesDescription(idno=idno, name=name))
+        if as_dictionary:
+            return ts.model_dump()
+        else:
+            return ts
 
     def delete_project_by_id(self, id: int):
         """
