@@ -216,7 +216,7 @@ class MetadataEditor(BaseModel):
         else:
             raise DeleteNotAppliedError()
 
-    def create_timeseries(
+    def create_and_log_timeseries(
         self,
         idno: str,
         series_description: Union[Dict, SeriesDescription],

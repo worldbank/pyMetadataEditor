@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from pymetadataeditor import MetadataEditor
 from pymetadataeditor.interface import DeleteNotAppliedError, MetadataDict
-from pymetadataeditor.schemas import MetadataInformation, SeriesDescription
+from pymetadataeditor.schemas import MetadataInformation, SeriesDescription, TimeseriesSchema
 
 
 class MockResponse:
@@ -172,21 +172,36 @@ def test_get_project_by_id(monkeypatch, metadata_editor):
     assert len(actual_project) == 2
 
 
-def test_create_timeseries(monkeypatch, metadata_editor):
+def test_create_and_log_timeseries(monkeypatch, metadata_editor):
+    def mock_response(*args, **kwargs):
+        return MockResponse(status_code=200)
+
+    monkeypatch.setattr(requests, "request", mock_response)
+
     # metadata no series description
     with pytest.raises(TypeError):
-        metadata_editor.create_timeseries(idno="GB123")
+        metadata_editor.create_and_log_timeseries(idno="GB123")
 
     # metadata series description has no idno
     with pytest.raises(ValueError):
-        metadata_editor.create_timeseries(
+        metadata_editor.create_and_log_timeseries(
             idno="GB123", series_description={"doi": "string", "name": "Gordons Test", "display_name": "string"}
         )
 
-    metadata_editor.create_timeseries(
+    metadata_editor.create_and_log_timeseries(
         idno="GB123",
         series_description={"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
     )
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(status_code=400)
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    with pytest.raises(Exception):
+        metadata_editor.create_and_log_timeseries(
+            idno="GB123",
+            series_description={"idno": "string", "doi": "string", "name": "Gordons Test", "display_name": "string"},
+        )
 
 
 def test_update_timeseries_by_id(monkeypatch, metadata_editor):
@@ -259,12 +274,14 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
     ts = metadata_editor.get_project_metadata_by_id(
         1,
     )
+    assert isinstance(ts, TimeseriesSchema)
     assert ts.idno == "12"
     assert ts.series_description.idno == "12"
     assert ts.series_description.name == "oldname"
 
     # as basic dictionary
     ts = metadata_editor.get_project_metadata_by_id(1, as_dictionary=True)
+    assert isinstance(ts, dict)
     assert ts["idno"] == "12"
     assert ts["series_description"]["idno"] == "12"
     assert ts["series_description"]["name"] == "oldname"
@@ -272,6 +289,7 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
 
     # as full dictionary
     ts = metadata_editor.get_project_metadata_by_id(1, as_dictionary=True, exclude_unset=False)
+    assert isinstance(ts, dict)
     assert ts["idno"] == "12"
     assert ts["series_description"]["idno"] == "12"
     assert ts["series_description"]["name"] == "oldname"
@@ -284,6 +302,7 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
 def test_create_basic_timeseries_metadata(metadata_editor):
     # as object
     ts = metadata_editor.create_basic_timeseries_metadata(idno="12", name="oldname")
+    assert isinstance(ts, TimeseriesSchema)
     assert ts.idno == "12"
     assert ts.series_description.idno == "12"
     assert ts.series_description.name == "oldname"
@@ -291,6 +310,7 @@ def test_create_basic_timeseries_metadata(metadata_editor):
 
     # as dictionary
     ts = metadata_editor.create_basic_timeseries_metadata(idno="12", name="oldname", as_dictionary=True)
+    assert isinstance(ts, dict)
     assert ts["idno"] == "12"
     assert ts["series_description"]["idno"] == "12"
     assert ts["series_description"]["name"] == "oldname"
