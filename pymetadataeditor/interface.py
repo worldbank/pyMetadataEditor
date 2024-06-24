@@ -165,6 +165,16 @@ class MetadataEditor(BaseModel):
     def get_project_metadata_by_id(
         self, id: int, as_dictionary: bool = False, exclude_unset: bool = True
     ) -> Union[MetadataDict, SchemaBaseModel]:
+        """
+        Args:
+            id (int): the id of the project, not to be confused with the idno.
+            as_dictionary (bool, optional): If True, return the metadata as a dictionary.
+                Otherwise, return a SchemaBaseModel instance. Defaults to False.
+
+        Returns:
+            Union[SchemaBaseModel, Dict]: The timeseries metadata as either an object or as a dictionary.
+
+        """
         project = self.get_project_by_id(id=id)
         project_type = project["type"]
         valid_types = {"timeseries": TimeseriesSchema}
@@ -181,7 +191,29 @@ class MetadataEditor(BaseModel):
     @staticmethod
     def create_basic_timeseries_metadata(
         idno: str, name: str, as_dictionary: bool = False
-    ) -> Union[MetadataDict, SchemaBaseModel]:
+    ) -> Union[SchemaBaseModel, MetadataDict]:
+        """
+        Create basic timeseries metadata, either as an object or as a dictionary, with the minimal data needed.
+
+        Args:
+            idno (str): The unique identifier for the timeseries.
+            name (str): The name of the timeseries.
+            as_dictionary (bool, optional): If True, return the metadata as a dictionary.
+                Otherwise, return a SchemaBaseModel instance. Defaults to False.
+
+        Returns:
+            Union[SchemaBaseModel, Dict]: The timeseries metadata as either an object or as a dictionary.
+
+        Example:
+            >>> MetadataEditor.create_basic_timeseries_metadata("ts123", "Temperature", as_dictionary=True)
+            {'idno': 'ts123',
+             'metadata_information': None,
+             'series_description': {'idno': 'ts123', 'name': 'Temperature'},
+             'datacite': None,
+             'provenance': None,
+             'tags': None,
+             'additional': None}
+        """
         ts = TimeseriesSchema(idno=idno, series_description=SeriesDescription(idno=idno, name=name))
         if as_dictionary:
             return ts.model_dump()
