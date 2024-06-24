@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from pymetadataeditor import MetadataEditor
 from pymetadataeditor.interface import DeleteNotAppliedError, MetadataDict
-from pymetadataeditor.schemas import SeriesDescription
+from pymetadataeditor.schemas import MetadataInformation, SeriesDescription
 
 
 class MockResponse:
@@ -221,6 +221,83 @@ def test_update_timeseries_by_id(monkeypatch, metadata_editor):
     metadata_editor.update_timeseries_by_id(
         1, series_description=series_description, metadata_information=metadata_information
     )
+
+
+def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
+    # bad project type
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=200,
+            json_data={
+                "project": {
+                    "type": "unknown",
+                    "metadata": {"idno": "12", "series_description": {"idno": "12", "name": "oldname"}},
+                }
+            },
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    with pytest.raises(AssertionError):
+        ts = metadata_editor.get_project_metadata_by_id(
+            1,
+        )
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=200,
+            json_data={
+                "project": {
+                    "type": "timeseries",
+                    "metadata": {"idno": "12", "series_description": {"idno": "12", "name": "oldname"}},
+                }
+            },
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+
+    # as object
+    ts = metadata_editor.get_project_metadata_by_id(
+        1,
+    )
+    assert ts.idno == "12"
+    assert ts.series_description.idno == "12"
+    assert ts.series_description.name == "oldname"
+
+    # as basic dictionary
+    ts = metadata_editor.get_project_metadata_by_id(1, as_dictionary=True)
+    assert ts["idno"] == "12"
+    assert ts["series_description"]["idno"] == "12"
+    assert ts["series_description"]["name"] == "oldname"
+    assert len(ts) == 2
+
+    # as full dictionary
+    ts = metadata_editor.get_project_metadata_by_id(1, as_dictionary=True, exclude_unset=False)
+    assert ts["idno"] == "12"
+    assert ts["series_description"]["idno"] == "12"
+    assert ts["series_description"]["name"] == "oldname"
+    assert len(ts) == 7
+    additional_fields = ["metadata_information", "datacite", "provenance", "tags", "additional"]
+    for field in additional_fields:
+        assert field in ts
+
+
+def test_create_basic_timeseries_metadata(metadata_editor):
+    # as object
+    ts = metadata_editor.create_basic_timeseries_metadata(idno="12", name="oldname")
+    assert ts.idno == "12"
+    assert ts.series_description.idno == "12"
+    assert ts.series_description.name == "oldname"
+    ts.metadata_information = MetadataInformation(title="example_title")
+
+    # as dictionary
+    ts = metadata_editor.create_basic_timeseries_metadata(idno="12", name="oldname", as_dictionary=True)
+    assert ts["idno"] == "12"
+    assert ts["series_description"]["idno"] == "12"
+    assert ts["series_description"]["name"] == "oldname"
+    assert len(ts) == 7
+    additional_fields = ["metadata_information", "datacite", "provenance", "tags", "additional"]
+    for field in additional_fields:
+        assert field in ts
 
 
 class MockGetProjectById:

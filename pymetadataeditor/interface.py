@@ -170,7 +170,7 @@ class MetadataEditor(BaseModel):
         valid_types = {"timeseries": TimeseriesSchema}
         assert project_type in valid_types, (
             f"this project is listed as a '{project_type}' type project but this is"
-            f" unknown. Projects must be one of {valid_types.keys()}"
+            f" unknown. Projects must be one of {list(valid_types.keys())}"
         )
         metadata_object = valid_types[project_type](**project["metadata"])
         if as_dictionary:
@@ -178,8 +178,9 @@ class MetadataEditor(BaseModel):
         else:
             return metadata_object
 
+    @staticmethod
     def create_basic_timeseries_metadata(
-        self, idno: str, name: str, as_dictionary: bool = False
+        idno: str, name: str, as_dictionary: bool = False
     ) -> Union[MetadataDict, SchemaBaseModel]:
         ts = TimeseriesSchema(idno=idno, series_description=SeriesDescription(idno=idno, name=name))
         if as_dictionary:
