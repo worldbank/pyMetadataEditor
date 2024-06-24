@@ -2,7 +2,7 @@
 name = "pymetadataeditor"
 version = "0.1.0"
 description = "Metadata editor client in python"
-authors = ["Gordon Blackadder <iblackadder@worldbank.org>"]
+authors = ["Gordon Blackadder <gblackadder@worldbank.org>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
