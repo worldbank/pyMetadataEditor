@@ -31,7 +31,7 @@ If you are running on Windows and see errors about numpy installation errors the
 
 To create new pydantic schemas based on json schema definitions, download new json schema definitions and put them in the folder `pymetadataeditor\schemas\jsonschema` and then, in the dev poetry environment, run the following command changing the input and output filenames as appropriate:
 
-`datamodel-codegen --input pymetadataeditor/schemas/jsonschema/timeseries-schema.json --input-file-type jsonschema --reuse-model --use-schema-description --target-python-version 3.11 --use-double-quotes --wrap-string-literal --base-class ...tools.SchemaBaseModel --output-model-type pydantic_v2.BaseModel --output pymetadataeditor/schemas/pydantic_definitions/timeseries_schema.py`
+`datamodel-codegen --input pymetadataeditor/schemas/jsonschema/timeseries-schema.json --input-file-type jsonschema --reuse-model --use-schema-description --target-python-version 3.11 --use-double-quotes --wrap-string-literal --base-class ...tools.SchemaBaseModel --output-model-type pydantic_v2.BaseModel --output pymetadataeditor/schemas/timeseries_schema.py`
 
 ### New Schema Troubleshooting
 

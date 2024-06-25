@@ -6,8 +6,8 @@ import pytest
 import requests
 from pydantic import ValidationError
 
-import pymetadataeditor.schemas.pydantic_definitions.survey_schema as sms
-import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
+import pymetadataeditor.schemas.survey_schema as sms
+import pymetadataeditor.schemas.timeseries_schema as tss
 from pymetadataeditor import MetadataEditor
 from pymetadataeditor.interface import DeleteNotAppliedError, MetadataDict
 

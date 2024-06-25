@@ -9,17 +9,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import ConfigDict, Field, constr
 
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription  # noqa: F401
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import (
-    BboxItem,
-    Keyword,
-    Producer,
-    ProvenanceSchema,
-    Tag,
-    VersionStatement,
-)
-
-from ...tools import SchemaBaseModel
+from .common_schemas import OriginDescription  # noqa: F401
+from .common_schemas import BboxItem, Keyword, Producer, ProvenanceSchema, SchemaBaseModel, Tag, VersionStatement
 
 
 class AccessPolicy(Enum):

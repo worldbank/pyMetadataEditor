@@ -9,17 +9,16 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import ConfigDict, Field
 
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription  # noqa: F401
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import (
+from pymetadataeditor.schemas.common_schemas import OriginDescription  # noqa: F401
+from pymetadataeditor.schemas.common_schemas import (
     BboxItem,
     Keyword,
     Producer,
     ProvenanceSchema,
+    SchemaBaseModel,
     Tag,
     VersionStatement,
 )
-
-from ...tools import SchemaBaseModel
 
 
 class MetadataInformation(SchemaBaseModel):

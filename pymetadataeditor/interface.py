@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, UrlConstraints, model_v
 from pydantic_core import Url
 from requests.exceptions import HTTPError, SSLError
 
-import pymetadataeditor.schemas.pydantic_definitions.survey_schema as sms
-import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import SchemaBaseModel
+import pymetadataeditor.schemas.survey_schema as sms
+import pymetadataeditor.schemas.timeseries_schema as tss
+from pymetadataeditor.schemas.common_schemas import SchemaBaseModel
 from pymetadataeditor.tools import update_metadata, validate_metadata
 
 warnings.filterwarnings(

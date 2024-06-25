@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import SchemaBaseModel
+import pymetadataeditor.schemas.timeseries_schema as tss
+from pymetadataeditor.schemas.common_schemas import SchemaBaseModel
 from pymetadataeditor.tools import validate_metadata
 
 

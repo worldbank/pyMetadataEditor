@@ -1,8 +1,16 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from pymetadataeditor.tools import SchemaBaseModel
+
+class SchemaBaseModel(BaseModel):
+    model_config = ConfigDict(
+        validate_assignment=True, protected_namespaces=()
+    )  # if a subclass has a model_config then this will be overridden
+
+    def __setitem__(self, key, value):
+        """Allow dict like setting: Model[key] = value"""
+        setattr(self, key, value)
 
 
 class OriginDescription(SchemaBaseModel):
