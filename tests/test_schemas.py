@@ -1,8 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from pymetadataeditor.schemas import TimeseriesSchema
-from pymetadataeditor.tools import SchemaBaseModel, validate_metadata
+import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import SchemaBaseModel
+from pymetadataeditor.tools import validate_metadata
 
 
 def test_SchemaBaseModel():
@@ -39,27 +40,27 @@ def test_SchemaBaseModel():
 def test_validate_metadata_TimeSeries():
     metadata_is_empty = {}
     with pytest.raises(ValidationError) as e:
-        validate_metadata(metadata_is_empty, TimeseriesSchema)
+        validate_metadata(metadata_is_empty, tss.TimeseriesSchema)
     assert e.value.error_count() == 1
     assert e.value.errors()[0]["loc"][0] == "series_description"
     assert e.value.errors()[0]["type"] == "missing"
 
     idno_is_wrong_type = {"idno": 17, "series_description": {"idno": "18", "name": "test"}}
     with pytest.raises(ValueError) as e:
-        validate_metadata(idno_is_wrong_type, TimeseriesSchema)
+        validate_metadata(idno_is_wrong_type, tss.TimeseriesSchema)
     assert e.value.error_count() == 1
     assert e.value.errors()[0]["loc"][0] == "idno"
     assert e.value.errors()[0]["type"] == "string_type"
 
     minimally_good_metadata = {"idno": "17", "series_description": {"idno": "18", "name": "test"}}
-    validate_metadata(minimally_good_metadata, TimeseriesSchema)
+    validate_metadata(minimally_good_metadata, tss.TimeseriesSchema)
 
     should_be_list = {
         "idno": "17",
         "series_description": {"idno": "18", "name": "test", "definition_references": {"uri": "bad_url"}},
     }
     with pytest.raises(ValueError) as e:
-        validate_metadata(should_be_list, TimeseriesSchema)
+        validate_metadata(should_be_list, tss.TimeseriesSchema)
     assert e.value.error_count() == 1
     assert e.value.errors()[0]["loc"][0] == "series_description"
     assert e.value.errors()[0]["loc"][1] == "definition_references"
@@ -76,7 +77,7 @@ def test_validate_metadata_TimeSeries():
     #     "series_description": {"idno": "18", "name": "test", "definition_references": [{"uri": "bad_url"}]},
     # }
     # with pytest.raises(ValueError) as e:
-    #     validate_metadata(bad_uri, TimeseriesSchema)
+    #     validate_metadata(bad_uri, tss.TimeseriesSchema)
     # assert e.value.error_count() == 1
     # assert e.value.errors()[0]["loc"][0] == "series_description"
     # assert e.value.errors()[0]["loc"][1] == "definition_references"
@@ -92,4 +93,4 @@ def test_validate_metadata_TimeSeries():
             "definition_references": [{"uri": "http://www.example.com"}],
         },
     }
-    validate_metadata(good_uri, TimeseriesSchema)
+    validate_metadata(good_uri, tss.TimeseriesSchema)

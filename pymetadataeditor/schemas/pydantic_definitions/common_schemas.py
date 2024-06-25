@@ -31,6 +31,34 @@ class OriginDescription(SchemaBaseModel):
     )
 
 
+class Keyword(SchemaBaseModel):
+    name: str = Field(..., title="Keyword")
+    vocabulary: Optional[str] = Field(None, title="Vocabulary")
+    uri: Optional[str] = Field(None, title="URI")
+
+
+class BboxItem(SchemaBaseModel):
+    west: Optional[str] = Field(None, title="West")
+    east: Optional[str] = Field(None, title="East")
+    south: Optional[str] = Field(None, title="South")
+    north: Optional[str] = Field(None, title="North")
+
+
+class VersionStatement(SchemaBaseModel):
+    """
+    Version Statement
+    """
+
+    version: Optional[str] = Field(None, title="Version")
+    version_date: Optional[str] = Field(None, title="Version Date")
+    version_resp: Optional[str] = Field(
+        None,
+        description=("The organization or person responsible for the version of the work"),
+        title="Version Responsibility Statement",
+    )
+    version_notes: Optional[str] = Field(None, title="Version Notes")
+
+
 class Producer(SchemaBaseModel):
     name: Optional[str] = Field(None, description="Name (required)", title="Name")
     abbr: Optional[str] = Field(None, title="Abbreviation")

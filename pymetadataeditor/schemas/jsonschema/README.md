@@ -23,9 +23,15 @@ Variable Group (accessed 24June2024): https://metadataeditorqa.worldbank.org/api
 
 * Update the timeseries.series_description.authoring_entity.abbreviation and series_description.authoring_entity.email to have a type
 
+* Both timeseries and survey metadata have fields for AuthoringEntityItem but they are slightly different. Find out if we can align them. Also for DataCollection, Topic, TimePeriod, Source
+
+* Survey Metadata schema even has two similar but different fields called Contact, can these be aligned?
+
 * We should update the json schemas for URL and URI fields so that they can't be just any string but must be valid URI "uri": {
                                 "title": "URI",
                                 "description": "URI",
                                 "type": "string",
                                 "format": "uri"
-                            },
+                            }
+
+* Is there a way to get datamodel-codegen not to create duplicate definitions of entities degined in common_schemas.py?

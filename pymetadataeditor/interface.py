@@ -9,25 +9,10 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, UrlConstraints, model_v
 from pydantic_core import Url
 from requests.exceptions import HTTPError, SSLError
 
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription, ProvenanceSchema, Tag
-from pymetadataeditor.schemas.pydantic_definitions.survey_schema import (
-    AccessPolicy,
-    DatafileSchema,
-    DocDesc,
-    Embedding,
-    LdaTopic,
-    NationItem,
-    Overwrite,
-    StudyDesc,
-    StudyInfo,
-    SurveyMicrodataSchema,
-    TitleStatement,
-    VariableGroupSchema,
-    VariableSchema,
-)
-from pymetadataeditor.tools import SchemaBaseModel, update_metadata, validate_metadata
-
-from .schemas import DataciteSchema, MetadataInformation, SeriesDescription, TimeseriesSchema
+import pymetadataeditor.schemas.pydantic_definitions.survey_schema as sms
+import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import SchemaBaseModel
+from pymetadataeditor.tools import update_metadata, validate_metadata
 
 warnings.filterwarnings(
     "ignore", category=UserWarning, module="pydantic"
@@ -68,7 +53,9 @@ class MetadataEditor(BaseModel):
         UrlConstraints(max_length=2083, allowed_schemes=["https"]),
     ]
     api_key: str
-    _metadata_types: dict = PrivateAttr(default={"timeseries": TimeseriesSchema, "survey": SurveyMicrodataSchema})
+    _metadata_types: dict = PrivateAttr(
+        default={"timeseries": tss.TimeseriesSchema, "survey": sms.SurveyMicrodataSchema}
+    )
 
     @model_validator(mode="after")
     def check_endpoint_accessible(self):
@@ -126,8 +113,6 @@ class MetadataEditor(BaseModel):
                 raise PermissionError(f"Access to this id is denied. Check that the id '{id}' is correct") from None
             else:
                 raise Exception(f"Status Code: {response.status_code}, Response: {response.text}") from e
-        # except Exception as e:
-        #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
         return response.json()
 
     def _get_request(self, pth: str, id: Optional[Union[int, str]] = None) -> Dict:
@@ -221,13 +206,60 @@ class MetadataEditor(BaseModel):
         Returns:
             Union[SchemaBaseModel, Dict]: The timeseries metadata as either a dictionary or as an object.
         """
-        ts = TimeseriesSchema(
+        ts = tss.TimeseriesSchema(
             idno=idno,
-            metadata_information=MetadataInformation(),
-            series_description=SeriesDescription(idno=idno, name=name),
-            datacite=DataciteSchema(),
-            provenance=[ProvenanceSchema()],
-            tags=[Tag()],
+            metadata_information=tss.MetadataInformation(
+                producers=[tss.Producer()], version_statement=tss.VersionStatement()
+            ),
+            series_description=tss.SeriesDescription(
+                idno=idno,
+                name=name,
+                authoring_entity=[tss.AuthoringEntityItem(name="")],
+                version_statement=tss.VersionStatement(),
+                aliases=[tss.Alias()],
+                alternate_identifiers=[tss.AlternateIdentifier(identifier="")],
+                languages=[tss.Language()],
+                dimensions=[tss.Dimension(label="")],
+                definition_references=[tss.DefinitionReference(uri="")],
+                statistical_concept_references=[tss.StatisticalConceptReference(uri="")],
+                concepts=[tss.Concept(name="")],
+                data_collection=tss.DataCollection(),
+                methodology_references=[tss.MethodologyReference(uri="")],
+                derivation_references=[tss.DerivationReference(uri="")],
+                imputation_references=[tss.ImputationReference(uri="")],
+                adjustments=[],
+                validation_rules=[],
+                themes=[tss.Theme(name="")],
+                topics=[tss.Topic(name="")],
+                disciplines=[tss.Discipline(name="")],
+                mandate=tss.Mandate(),
+                time_periods=[tss.TimePeriod()],
+                ref_country=[tss.RefCountryItem()],
+                geographic_units=[tss.GeographicUnit(name="")],
+                bbox=[tss.BboxItem()],
+                aggregation_method_references=[tss.AggregationMethodReference(uri="")],
+                license=[tss.LicenseItem()],
+                links=[tss.Link()],
+                api_documentation=[tss.ApiDocumentationItem()],
+                sources=[tss.Source(name="")],
+                keywords=[tss.Keyword(name="")],
+                acronyms=[tss.Acronym(acronym="", expansion="")],
+                errata=[tss.Erratum()],
+                acknowledgements=[tss.Acknowledgement()],
+                notes=[tss.Note()],
+                related_indicators=[tss.RelatedIndicator()],
+                compliance=[tss.ComplianceItem(standard="")],
+                framework=[tss.FrameworkItem(name="")],
+                series_groups=[tss.SeriesGroup()],
+                contacts=[tss.Contact()],
+            ),
+            datacite=tss.DataciteSchema(
+                creators=[tss.Creator(name="", nameType=tss.NameType.Organizational)],
+                titles=[tss.Title(title="", titleType=tss.TitleType.AlternativeTitle)],
+                types=tss.Types(resourceType="", resourceTypeGeneral=tss.ResourceTypeGeneral.Dataset),
+            ),
+            provenance=[tss.ProvenanceSchema(origin_description=tss.OriginDescription())],
+            tags=[tss.Tag()],
             additional={},
         )
         if as_object:
@@ -251,23 +283,74 @@ class MetadataEditor(BaseModel):
         Returns:
             Union[SchemaBaseModel, Dict]: The survey microdata metadata as either a dictionary or as an object.
         """
-        sm = SurveyMicrodataSchema(
-            repositoryid=None,
-            access_policy=None,
-            published=None,
-            overwrite=None,
-            doc_desc=DocDesc(idno=idno, title=title),
-            study_desc=StudyDesc(
-                title_statement=TitleStatement(idno=idno, title=title),
-                study_info=StudyInfo(nation=[NationItem(name="")]),
+        sm = sms.SurveyMicrodataSchema(
+            # repositoryid=None,
+            # access_policy=None,
+            # published=None,
+            # overwrite=None,
+            doc_desc=sms.DocDesc(idno=idno, title=title),
+            study_desc=sms.StudyDesc(
+                title_statement=sms.TitleStatement(idno=idno, title=title),
+                authoring_entity=[sms.AuthoringEntityItem(name="")],
+                oth_id=[sms.OthIdItem(name="")],
+                production_statement=sms.ProductionStatement(),
+                distribution_statement=sms.DistributionStatement(
+                    distributors=[sms.Distributor(name="")],
+                    contact=[sms.ContactItem()],
+                    depositor=[sms.DepositorItem()],
+                ),
+                series_statement=sms.SeriesStatement(),
+                version_statement=sms.VersionStatement(),
+                holdings=[sms.Holding()],
+                study_authorization=sms.StudyAuthorization(agency=[sms.AgencyItem(name="")]),
+                study_info=sms.StudyInfo(
+                    keywords=[sms.Keyword(name="")],
+                    topics=[sms.Topic(topic="")],
+                    time_periods=[sms.TimePeriod(start="")],
+                    coll_dates=[sms.CollDate(start="")],
+                    nation=[sms.NationItem(name="")],
+                    bbox=[sms.BboxItem()],
+                    bound_poly=[sms.BoundPolyItem()],
+                    quality_statement=sms.QualityStatement(standards=[sms.Standard()]),
+                    ex_post_evaluation=sms.ExPostEvaluation(evaluator=[sms.EvaluatorItem(name="")]),
+                ),
+                study_development=sms.StudyDevelopment(
+                    development_activity=[
+                        sms.DevelopmentActivityItem(participants=[sms.Participant(name="")], resources=[sms.Resource()])
+                    ]
+                ),
+                data_access=sms.DataAccess(
+                    dataset_availability=sms.DatasetAvailability(),
+                    dataset_use=sms.DatasetUse(
+                        conf_dec=[sms.ConfDecItem()], spec_perm=[sms.SpecPermItem()], contact=[sms.ContactItem1()]
+                    ),
+                ),
             ),
-            data_files=[DatafileSchema(file_id="", file_name="")],
-            variables=[VariableSchema(file_id="", vid="", name="", labl="")],
-            variable_groups=[VariableGroupSchema(vgid="")],
-            provenance=[ProvenanceSchema(origin_description=OriginDescription())],
-            tags=[Tag()],
-            lda_topics=[LdaTopic()],
-            embeddings=[Embedding(id="", vector={})],
+            data_files=[sms.DatafileSchema(file_id="", file_name="")],
+            variables=[
+                sms.VariableSchema(
+                    file_id="",
+                    vid="",
+                    name="",
+                    labl="",
+                    var_intrvl=sms.VarIntrvl.contin,
+                    var_sumstat=[sms.VarSumstatItem()],
+                    var_catgry=[sms.VarCatgryItem()],
+                    var_std_catgry=sms.VarStdCatgry(),
+                    var_concept=[sms.VarConceptItem(title="")],
+                    var_format=sms.VarFormat(),
+                )
+            ],
+            variable_groups=[sms.VariableGroupSchema(vgid="", group_type=sms.GroupType.subject)],
+            provenance=[sms.ProvenanceSchema(origin_description=sms.OriginDescription())],
+            tags=[sms.Tag()],
+            lda_topics=[
+                sms.LdaTopic(
+                    model_info=[sms.ModelInfoItem()],
+                    topic_description=[sms.TopicDescriptionItem(topic_words=[sms.TopicWord()])],
+                )
+            ],
+            embeddings=[sms.Embedding(id="", vector={})],
             additional={},
         )
         if as_object:
@@ -306,11 +389,11 @@ class MetadataEditor(BaseModel):
     def create_and_log_timeseries(
         self,
         idno: str,
-        series_description: Union[Dict, SeriesDescription],
-        metadata_information: Optional[Union[Dict, MetadataInformation]] = None,
-        datacite: Optional[Union[Dict, DataciteSchema]] = None,
-        provenance: Optional[List[Union[Dict, ProvenanceSchema]]] = None,
-        tags: Optional[Union[Dict, List[Tag]]] = None,
+        series_description: Union[Dict, tss.SeriesDescription],
+        metadata_information: Optional[Union[Dict, tss.MetadataInformation]] = None,
+        datacite: Optional[Union[Dict, tss.DataciteSchema]] = None,
+        provenance: Optional[List[Union[Dict, tss.ProvenanceSchema]]] = None,
+        tags: Optional[Union[Dict, List[tss.Tag]]] = None,
         additional: Optional[Dict] = None,
     ):
         """
@@ -367,18 +450,18 @@ class MetadataEditor(BaseModel):
     def create_and_log_survey_microdata(
         self,
         repositoryid: Optional[str] = None,
-        access_policy: Optional[Union[str, AccessPolicy]] = None,
+        access_policy: Optional[Union[str, sms.AccessPolicy]] = None,
         published: Optional[int] = None,
-        overwrite: Optional[Union[str, Overwrite]] = None,
-        doc_desc: Optional[Union[Dict, DocDesc]] = None,
-        study_desc: Optional[Union[Dict, StudyDesc]] = None,
-        data_files: Optional[Union[List[Dict], List[DatafileSchema]]] = None,
-        variables: Optional[Union[List[Dict], List[VariableSchema]]] = None,
-        variable_groups: Optional[Union[List[Dict], List[VariableGroupSchema]]] = None,
-        provenance: Optional[Union[List[Dict], List[ProvenanceSchema]]] = None,
-        tags: Optional[Union[List[Dict], List[Tag]]] = None,
-        lda_topics: Optional[Union[List[Dict], List[LdaTopic]]] = None,
-        embeddings: Optional[Union[List[Dict], List[Embedding]]] = None,
+        overwrite: Optional[Union[str, sms.Overwrite]] = None,
+        doc_desc: Optional[Union[Dict, sms.DocDesc]] = None,
+        study_desc: Optional[Union[Dict, sms.StudyDesc]] = None,
+        data_files: Optional[Union[List[Dict], List[sms.DatafileSchema]]] = None,
+        variables: Optional[Union[List[Dict], List[sms.VariableSchema]]] = None,
+        variable_groups: Optional[Union[List[Dict], List[sms.VariableGroupSchema]]] = None,
+        provenance: Optional[Union[List[Dict], List[sms.ProvenanceSchema]]] = None,
+        tags: Optional[Union[List[Dict], List[sms.Tag]]] = None,
+        lda_topics: Optional[Union[List[Dict], List[sms.LdaTopic]]] = None,
+        embeddings: Optional[Union[List[Dict], List[sms.Embedding]]] = None,
         additional: Optional[MetadataDict] = None,
     ):
         """
@@ -490,11 +573,11 @@ class MetadataEditor(BaseModel):
         self,
         id: int,
         # idno: Optional[str] = None,
-        series_description: Optional[Union[Dict, SeriesDescription]] = None,
-        metadata_information: Optional[Union[Dict, MetadataInformation]] = None,
-        datacite: Optional[Union[Dict, DataciteSchema]] = None,
-        provenance: Optional[List[Union[Dict, ProvenanceSchema]]] = None,
-        tags: Optional[Union[Dict, List[Tag]]] = None,
+        series_description: Optional[Union[Dict, tss.SeriesDescription]] = None,
+        metadata_information: Optional[Union[Dict, tss.MetadataInformation]] = None,
+        datacite: Optional[Union[Dict, tss.DataciteSchema]] = None,
+        provenance: Optional[List[Union[Dict, tss.ProvenanceSchema]]] = None,
+        tags: Optional[Union[Dict, List[tss.Tag]]] = None,
         additional: Optional[Dict] = None,
     ):
         """
@@ -540,18 +623,18 @@ class MetadataEditor(BaseModel):
         self,
         id: int,
         repositoryid: Optional[str] = None,
-        access_policy: Optional[Union[str, AccessPolicy]] = None,
+        access_policy: Optional[Union[str, sms.AccessPolicy]] = None,
         published: Optional[int] = None,
-        overwrite: Optional[Union[str, Overwrite]] = None,
-        doc_desc: Optional[Union[Dict, DocDesc]] = None,
-        study_desc: Optional[Union[Dict, StudyDesc]] = None,
-        data_files: Optional[Union[List[Dict], List[DatafileSchema]]] = None,
-        variables: Optional[Union[List[Dict], List[VariableSchema]]] = None,
-        variable_groups: Optional[Union[List[Dict], List[VariableGroupSchema]]] = None,
-        provenance: Optional[Union[List[Dict], List[ProvenanceSchema]]] = None,
-        tags: Optional[Union[List[Dict], List[Tag]]] = None,
-        lda_topics: Optional[Union[List[Dict], List[LdaTopic]]] = None,
-        embeddings: Optional[Union[List[Dict], List[Embedding]]] = None,
+        overwrite: Optional[Union[str, sms.Overwrite]] = None,
+        doc_desc: Optional[Union[Dict, sms.DocDesc]] = None,
+        study_desc: Optional[Union[Dict, sms.StudyDesc]] = None,
+        data_files: Optional[Union[List[Dict], List[sms.DatafileSchema]]] = None,
+        variables: Optional[Union[List[Dict], List[sms.VariableSchema]]] = None,
+        variable_groups: Optional[Union[List[Dict], List[sms.VariableGroupSchema]]] = None,
+        provenance: Optional[Union[List[Dict], List[sms.ProvenanceSchema]]] = None,
+        tags: Optional[Union[List[Dict], List[sms.Tag]]] = None,
+        lda_topics: Optional[Union[List[Dict], List[sms.LdaTopic]]] = None,
+        embeddings: Optional[Union[List[Dict], List[sms.Embedding]]] = None,
         additional: Optional[MetadataDict] = None,
     ):
         """

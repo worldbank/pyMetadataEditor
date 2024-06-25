@@ -6,10 +6,10 @@ import pytest
 import requests
 from pydantic import ValidationError
 
+import pymetadataeditor.schemas.pydantic_definitions.survey_schema as sms
+import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
 from pymetadataeditor import MetadataEditor
 from pymetadataeditor.interface import DeleteNotAppliedError, MetadataDict
-from pymetadataeditor.schemas import MetadataInformation, SeriesDescription, TimeseriesSchema
-from pymetadataeditor.schemas.pydantic_definitions.survey_schema import SurveyMicrodataSchema
 
 
 class MockResponse:
@@ -227,7 +227,7 @@ def test_create_and_log_survey_microdata(monkeypatch, metadata_editor):
 
 
 def test_update_timeseries_by_id(monkeypatch, metadata_editor):
-    series_description = SeriesDescription(idno="17", name="1")
+    series_description = tss.SeriesDescription(idno="17", name="1")
     metadata_information = {"title": "check we can pass in a dict as well as a pydantic object"}
 
     # id is bad
@@ -264,7 +264,7 @@ def test_update_timeseries_by_id(monkeypatch, metadata_editor):
 
 
 def test_update_survey_microdata_by_id(monkeypatch, metadata_editor):
-    series_description = SeriesDescription(idno="17", name="1")
+    series_description = tss.SeriesDescription(idno="17", name="1")
     metadata_information = {"title": "check we can pass in a dict as well as a pydantic object"}
 
     # id is bad
@@ -352,7 +352,7 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
 
     # as object
     ts = metadata_editor.get_project_metadata_by_id(1, as_object=True)
-    assert isinstance(ts, TimeseriesSchema), type(ts)
+    assert isinstance(ts, tss.TimeseriesSchema), type(ts)
     assert ts.idno == "12"
     assert ts.series_description.idno == "12"
     assert ts.series_description.name == "oldname"
@@ -391,11 +391,11 @@ def test_skeleton_timeseries_metadata(metadata_editor):
 
     # as object
     ts = metadata_editor.skeleton_timeseries_metadata(idno="12", name="oldname", as_object=True)
-    assert isinstance(ts, TimeseriesSchema)
+    assert isinstance(ts, tss.TimeseriesSchema)
     assert ts.idno == "12"
     assert ts.series_description.idno == "12"
     assert ts.series_description.name == "oldname"
-    ts.metadata_information = MetadataInformation(title="example_title")
+    ts.metadata_information = tss.MetadataInformation(title="example_title")
 
 
 def test_skeleton_survey_microdata_metadata(metadata_editor):
@@ -426,7 +426,7 @@ def test_skeleton_survey_microdata_metadata(metadata_editor):
 
     # as object
     sm = metadata_editor.skeleton_survey_microdata_metadata(idno="1", title="mytitle", as_object=True)
-    assert isinstance(sm, SurveyMicrodataSchema)
+    assert isinstance(sm, sms.SurveyMicrodataSchema)
     assert sm.study_desc.title_statement.idno == "1"
     assert sm.study_desc.title_statement.title == "mytitle"
 

@@ -9,24 +9,17 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import ConfigDict, Field
 
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import Producer, ProvenanceSchema, Tag
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription  # noqa: F401
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import (
+    BboxItem,
+    Keyword,
+    Producer,
+    ProvenanceSchema,
+    Tag,
+    VersionStatement,
+)
 
 from ...tools import SchemaBaseModel
-
-
-class VersionStatement(SchemaBaseModel):
-    """
-    Version Statement
-    """
-
-    version: Optional[str] = Field(None, title="Version")
-    version_date: Optional[str] = Field(None, title="Version Date")
-    version_resp: Optional[str] = Field(
-        None,
-        description=("The organization or person responsible for the version of the work"),
-        title="Version Responsibility Statement",
-    )
-    version_notes: Optional[str] = Field(None, title="Version Notes")
 
 
 class MetadataInformation(SchemaBaseModel):
@@ -209,13 +202,6 @@ class GeographicUnit(SchemaBaseModel):
     )
 
 
-class BboxItem(SchemaBaseModel):
-    west: Optional[str] = Field(None, title="West")
-    east: Optional[str] = Field(None, title="East")
-    south: Optional[str] = Field(None, title="South")
-    north: Optional[str] = Field(None, title="North")
-
-
 class AggregationMethodReference(DefinitionReference):
     pass
 
@@ -279,12 +265,6 @@ class Source(SchemaBaseModel):
     uri: Optional[str] = Field(None, title="URI")
     access_date: Optional[str] = Field(None, title="Access date")
     note: Optional[str] = Field(None, title="Note")
-
-
-class Keyword(SchemaBaseModel):
-    name: str = Field(..., title="Keyword")
-    vocabulary: Optional[str] = Field(None, title="Vocabulary")
-    uri: Optional[str] = Field(None, title="URI")
 
 
 class Acronym(SchemaBaseModel):

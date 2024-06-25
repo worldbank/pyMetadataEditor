@@ -9,7 +9,15 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import ConfigDict, Field, constr
 
-from pymetadataeditor.schemas.pydantic_definitions.common_schemas import Producer, ProvenanceSchema, Tag
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription  # noqa: F401
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import (
+    BboxItem,
+    Keyword,
+    Producer,
+    ProvenanceSchema,
+    Tag,
+    VersionStatement,
+)
 
 from ...tools import SchemaBaseModel
 
@@ -315,21 +323,6 @@ class VariableGroupSchema(SchemaBaseModel):
     definition: Optional[constr(max_length=500)] = Field(None, title="Definition")
 
 
-class VersionStatement(SchemaBaseModel):
-    """
-    Version Statement
-    """
-
-    version: Optional[str] = Field(None, title="Version")
-    version_date: Optional[str] = Field(None, title="Version Date")
-    version_resp: Optional[str] = Field(
-        None,
-        description=("The organization or person responsible for the version of the work"),
-        title="Version Responsibility Statement",
-    )
-    version_notes: Optional[str] = Field(None, title="Version Notes")
-
-
 class DocDesc(SchemaBaseModel):
     """
     Document Description
@@ -564,12 +557,6 @@ class StudyAuthorization(SchemaBaseModel):
     )
 
 
-class Keyword(SchemaBaseModel):
-    keyword: Optional[str] = Field(None, title="Keyword")
-    vocab: Optional[str] = Field(None, title="Vocabulary")
-    uri: Optional[str] = Field(None, title="uri")
-
-
 class Topic(SchemaBaseModel):
     topic: str = Field(..., title="Topic")
     vocab: Optional[str] = Field(None, title="Vocab")
@@ -589,13 +576,6 @@ class CollDate(TimePeriod):
 class NationItem(SchemaBaseModel):
     name: str = Field(..., description="Country name", title="Name")
     abbreviation: Optional[str] = Field(None, description="Country ISO code", title="Country code")
-
-
-class BboxItem(SchemaBaseModel):
-    west: Optional[str] = Field(None, title="West")
-    east: Optional[str] = Field(None, title="East")
-    south: Optional[str] = Field(None, title="South")
-    north: Optional[str] = Field(None, title="North")
 
 
 class BoundPolyItem(SchemaBaseModel):

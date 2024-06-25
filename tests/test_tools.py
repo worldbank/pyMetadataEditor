@@ -2,14 +2,15 @@ import json
 
 import pytest
 
-from pymetadataeditor.schemas import SeriesDescription
-from pymetadataeditor.tools import SchemaBaseModel, update_metadata, validate_metadata
+import pymetadataeditor.schemas.pydantic_definitions.timeseries_schema as tss
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import SchemaBaseModel
+from pymetadataeditor.tools import update_metadata, validate_metadata
 
 
 def test_validate_metadata():
     class Example(SchemaBaseModel):
         idno: str
-        series_description: SeriesDescription
+        series_description: tss.SeriesDescription
 
     with pytest.raises(AssertionError):
         validate_metadata({}, "bad_schema")
@@ -32,10 +33,10 @@ def test_validate_metadata():
     data_is_valid_dict = {"idno": "12", "series_description": {"idno": "12", "name": "n"}}
     validate_metadata(data_is_valid_dict, Example)
 
-    data_is_mix_of_dict_and_obj = {"idno": "12", "series_description": SeriesDescription(idno="12", name="n")}
+    data_is_mix_of_dict_and_obj = {"idno": "12", "series_description": tss.SeriesDescription(idno="12", name="n")}
     validate_metadata(data_is_mix_of_dict_and_obj, Example)
 
-    data_is_obj = Example(idno="12", series_description=SeriesDescription(idno="12", name="n"))
+    data_is_obj = Example(idno="12", series_description=tss.SeriesDescription(idno="12", name="n"))
     validate_metadata(data_is_obj, Example)
 
 
