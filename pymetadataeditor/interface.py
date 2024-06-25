@@ -5,13 +5,29 @@ from typing import Annotated, Dict, List, Optional, Union
 
 import pandas as pd
 import requests
-from pydantic import BaseModel, ConfigDict, UrlConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, PrivateAttr, UrlConstraints, model_validator
 from pydantic_core import Url
 from requests.exceptions import HTTPError, SSLError
 
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription, ProvenanceSchema, Tag
+from pymetadataeditor.schemas.pydantic_definitions.survey_schema import (
+    AccessPolicy,
+    DatafileSchema,
+    DocDesc,
+    Embedding,
+    LdaTopic,
+    NationItem,
+    Overwrite,
+    StudyDesc,
+    StudyInfo,
+    SurveyMicrodataSchema,
+    TitleStatement,
+    VariableGroupSchema,
+    VariableSchema,
+)
 from pymetadataeditor.tools import SchemaBaseModel, update_metadata, validate_metadata
 
-from .schemas import DataciteSchema, MetadataInformation, ProvenanceSchema, SeriesDescription, Tag, TimeseriesSchema
+from .schemas import DataciteSchema, MetadataInformation, SeriesDescription, TimeseriesSchema
 
 warnings.filterwarnings(
     "ignore", category=UserWarning, module="pydantic"
@@ -52,6 +68,7 @@ class MetadataEditor(BaseModel):
         UrlConstraints(max_length=2083, allowed_schemes=["https"]),
     ]
     api_key: str
+    _metadata_types: dict = PrivateAttr(default={"timeseries": TimeseriesSchema, "survey": SurveyMicrodataSchema})
 
     @model_validator(mode="after")
     def check_endpoint_accessible(self):
@@ -163,62 +180,100 @@ class MetadataEditor(BaseModel):
         return pd.Series(response["project"])
 
     def get_project_metadata_by_id(
-        self, id: int, as_dictionary: bool = False, exclude_unset: bool = True
+        self, id: int, exclude_unset: bool = True, as_object: bool = False
     ) -> Union[MetadataDict, SchemaBaseModel]:
         """
         Args:
             id (int): the id of the project, not to be confused with the idno.
-            as_dictionary (bool, optional): If True, return the metadata as a dictionary.
-                Otherwise, return a SchemaBaseModel instance. Defaults to False.
+            exclude_unset (bool): when returning a dictionary (that is when as_object is False), if True then fields
+                that were not set or have a None value are removed from the dictionary. Defaults to True
+            as_object (bool): If True, return the metadata as a pydantic object.
+                Otherwise, return a dictionary. Defaults to False.
 
         Returns:
-            Union[SchemaBaseModel, Dict]: The timeseries metadata as either an object or as a dictionary.
-
+            Union[SchemaBaseModel, Dict]: The metadata as either a dictionary or an object.
         """
         project = self.get_project_by_id(id=id)
         project_type = project["type"]
-        valid_types = {"timeseries": TimeseriesSchema}
-        assert project_type in valid_types, (
+        assert project_type in self._metadata_types, (
             f"this project is listed as a '{project_type}' type project but this is"
-            f" unknown. Projects must be one of {list(valid_types.keys())}"
+            f" unknown. Projects must be one of {list(self._metadata_types.keys())}"
         )
-        metadata_object = valid_types[project_type](**project["metadata"])
-        if as_dictionary:
-            return metadata_object.model_dump(exclude_none=exclude_unset, exclude_unset=exclude_unset)
-        else:
+        metadata_object = self._metadata_types[project_type](**project["metadata"])
+        if as_object:
             return metadata_object
+        else:
+            return metadata_object.model_dump(exclude_none=exclude_unset, exclude_unset=exclude_unset)
 
     @staticmethod
-    def create_basic_timeseries_metadata(
-        idno: str, name: str, as_dictionary: bool = False
+    def skeleton_timeseries_metadata(
+        idno: str, name: str, as_object: bool = False
     ) -> Union[SchemaBaseModel, MetadataDict]:
         """
-        Create basic timeseries metadata, either as an object or as a dictionary, with the minimal data needed.
+        Create outline timeseries metadata, either as a dictionary or an object, with the minimally required information
 
         Args:
             idno (str): The unique identifier for the timeseries.
             name (str): The name of the timeseries.
-            as_dictionary (bool, optional): If True, return the metadata as a dictionary.
-                Otherwise, return a SchemaBaseModel instance. Defaults to False.
+            as_object (bool): If True, return the metadata as a pydantic object.
+                Otherwise, return a dictionary instance. Defaults to False.
 
         Returns:
-            Union[SchemaBaseModel, Dict]: The timeseries metadata as either an object or as a dictionary.
-
-        Example:
-            >>> MetadataEditor.create_basic_timeseries_metadata("ts123", "Temperature", as_dictionary=True)
-            {'idno': 'ts123',
-             'metadata_information': None,
-             'series_description': {'idno': 'ts123', 'name': 'Temperature'},
-             'datacite': None,
-             'provenance': None,
-             'tags': None,
-             'additional': None}
+            Union[SchemaBaseModel, Dict]: The timeseries metadata as either a dictionary or as an object.
         """
-        ts = TimeseriesSchema(idno=idno, series_description=SeriesDescription(idno=idno, name=name))
-        if as_dictionary:
-            return ts.model_dump()
-        else:
+        ts = TimeseriesSchema(
+            idno=idno,
+            metadata_information=MetadataInformation(),
+            series_description=SeriesDescription(idno=idno, name=name),
+            datacite=DataciteSchema(),
+            provenance=[ProvenanceSchema()],
+            tags=[Tag()],
+            additional={},
+        )
+        if as_object:
             return ts
+        else:
+            return ts.model_dump()
+
+    @staticmethod
+    def skeleton_survey_microdata_metadata(
+        idno: str, title: str, as_object: bool = False
+    ) -> Union[SchemaBaseModel, MetadataDict]:
+        """
+        Create outline survey microdata metadata, either as a dictionary or as an object.
+
+        Args:
+            idno (str): The unique identifier for the microdata.
+            title (str): The title of the survey microdata.
+            as_object (bool): If True, return the metadata as a pydantic object.
+                Otherwise, return a dictionary instance. Defaults to False.
+
+        Returns:
+            Union[SchemaBaseModel, Dict]: The survey microdata metadata as either a dictionary or as an object.
+        """
+        sm = SurveyMicrodataSchema(
+            repositoryid=None,
+            access_policy=None,
+            published=None,
+            overwrite=None,
+            doc_desc=DocDesc(idno=idno, title=title),
+            study_desc=StudyDesc(
+                title_statement=TitleStatement(idno=idno, title=title),
+                study_info=StudyInfo(nation=[NationItem(name="")]),
+            ),
+            data_files=[DatafileSchema(file_id="", file_name="")],
+            variables=[VariableSchema(file_id="", vid="", name="", labl="")],
+            variable_groups=[VariableGroupSchema(vgid="")],
+            provenance=[ProvenanceSchema(origin_description=OriginDescription())],
+            tags=[Tag()],
+            lda_topics=[LdaTopic()],
+            embeddings=[Embedding(id="", vector={})],
+            additional={},
+        )
+        if as_object:
+            return sm
+        else:
+            return sm.model_dump()
 
     def delete_project_by_id(self, id: int):
         """
@@ -289,7 +344,7 @@ class MetadataEditor(BaseModel):
         >>> tags = [Tag(tag="tag1"), Tag(tag="tag2", tag_group="example group")]
         >>> additional = {"key1": "value1", "key2": "value2"}
 
-        >>> response = self.create_timeseries(
+        >>> response = self.create_and_log_timeseries(
         ...     idno="TS001",
         ...     series_description=series_description,
         ...     metadata_information=metadata_information,
@@ -307,12 +362,129 @@ class MetadataEditor(BaseModel):
             "tags": tags,
             "additional": additional,
         }
+        self._create_and_log(metadata, "timeseries")
 
-        validate_metadata(metadata, TimeseriesSchema)
-        ts = TimeseriesSchema(**metadata)
+    def create_and_log_survey_microdata(
+        self,
+        repositoryid: Optional[str] = None,
+        access_policy: Optional[Union[str, AccessPolicy]] = None,
+        published: Optional[int] = None,
+        overwrite: Optional[Union[str, Overwrite]] = None,
+        doc_desc: Optional[Union[Dict, DocDesc]] = None,
+        study_desc: Optional[Union[Dict, StudyDesc]] = None,
+        data_files: Optional[Union[List[Dict], List[DatafileSchema]]] = None,
+        variables: Optional[Union[List[Dict], List[VariableSchema]]] = None,
+        variable_groups: Optional[Union[List[Dict], List[VariableGroupSchema]]] = None,
+        provenance: Optional[Union[List[Dict], List[ProvenanceSchema]]] = None,
+        tags: Optional[Union[List[Dict], List[Tag]]] = None,
+        lda_topics: Optional[Union[List[Dict], List[LdaTopic]]] = None,
+        embeddings: Optional[Union[List[Dict], List[Embedding]]] = None,
+        additional: Optional[MetadataDict] = None,
+    ):
+        """
+            Creates a record of your *survey microdata* metadata
 
-        post_request_pth = "/editor/create/timeseries"
-        self._post_request(pth=post_request_pth, metadata=ts.model_dump(exclude_none=True, exclude_unset=True))
+
+        Args:
+            repositoryid : Optional[str]
+                The identifier for the repository where the survey microdata is to be stored.
+            access_policy : Optional[Union[str, AccessPolicy]]
+                The access policy for the survey data. Can be a string or an AccessPolicy object.
+            published : Optional[int]
+                The publication status of the survey data. Typically, 0 for unpublished and 1 for published.
+            overwrite : Optional[Union[str, Overwrite]]
+                Policy for overwriting existing data. Can be a string or an Overwrite object.
+            doc_desc : Optional[Union[Dict, DocDesc]]
+                Description of the documentation for the survey. Can be a dictionary or a DocDesc object.
+            study_desc : Optional[Union[Dict, StudyDesc]]
+                Description of the study. Can be a dictionary or a StudyDesc object.
+            data_files : Optional[Union[List[Dict], List[DatafileSchema]]]
+                List of data files associated with the survey. Each item can be a dictionary or a DatafileSchema object.
+            variables : Optional[Union[List[Dict], List[VariableSchema]]]
+                List of variables included in the survey. Each item can be a dictionary or a VariableSchema object.
+            variable_groups : Optional[Union[List[Dict], List[VariableGroupSchema]]]
+                List of variable groups included in the survey. Each item can be a dictionary or a VariableGroupSchema
+                object.
+            provenance : Optional[Union[List[Dict], List[ProvenanceSchema]]]
+                Provenance information for the survey data. Each item can be a dictionary or a ProvenanceSchema object.
+            tags : Optional[Union[List[Dict], List[Tag]]]
+                Tags associated with the survey data. Each item can be a dictionary or a Tag object.
+            lda_topics : Optional[Union[List[Dict], List[LdaTopic]]]
+                List of LDA topics associated with the survey. Each item can be a dictionary or an LdaTopic object.
+            embeddings : Optional[Union[List[Dict], List[Embedding]]]
+                List of embeddings associated with the survey. Each item can be a dictionary or an Embedding object.
+            additional : Optional[Dict[str, Any]]
+                Any additional metadata to be associated with the survey data.
+
+
+        >>> from pymetadataeditor.schemas import (
+        ...     AccessPolicy,
+        ...     DocDesc,
+        ...     StudyDesc,
+        ...     DatafileSchema,
+        ...     VariableSchema,
+        ...     VariableGroupSchema,
+        ...     ProvenanceSchema,
+        ...     Tag,
+        ...     LdaTopic,
+        ...     Embedding
+        ... )
+        >>> doc_desc = DocDesc(title="Survey Documentation")
+        >>> study_desc = StudyDesc(title="Survey Study")
+        >>> data_files = [DatafileSchema(id="file1", description="Data file 1")]
+        >>> variables = [VariableSchema(id="var1", name="Variable 1")]
+        >>> variable_groups = [VariableGroupSchema(id="group1", name="Group 1")]
+        >>> provenance = [ProvenanceSchema(event="Created", date="2024-01-01")]
+        >>> tags = [Tag(tag="tag1"), Tag(tag="tag2")]
+        >>> lda_topics = [LdaTopic(id="topic1", description="Topic 1")]
+        >>> embeddings = [Embedding(id="embed1", vector=[0.1, 0.2, 0.3])]
+        >>> additional = {"key1": "value1", "key2": "value2"}
+
+        >>> response = self.create_and_log_survey_microdata(
+        ...     repositoryid="repo123",
+        ...     access_policy=AccessPolicy(policy="open"),
+        ...     published=1,
+        ...     overwrite="yes",
+        ...     doc_desc=doc_desc,
+        ...     study_desc=study_desc,
+        ...     data_files=data_files,
+        ...     variables=variables,
+        ...     variable_groups=variable_groups,
+        ...     provenance=provenance,
+        ...     tags=tags,
+        ...     lda_topics=lda_topics,
+        ...     embeddings=embeddings,
+        ...     additional=additional
+        ... )
+        """
+        metadata = {
+            "repositoryid": repositoryid,
+            "access_policy": access_policy,  # why access_policy on the microdata but not timeseries???
+            "published": published,
+            "overwrite": overwrite,  # similarly overwrite
+            "doc_desc": doc_desc,
+            "study_desc": study_desc,
+            "data_files": data_files,
+            "variables": variables,
+            "variable_groups": variable_groups,
+            "provenance": provenance,
+            "tags": tags,
+            "lda_topics": lda_topics,
+            "embeddings": embeddings,
+            "additional": additional,
+        }
+        self._create_and_log(metadata, "survey")
+
+    def _create_and_log(self, metadata: MetadataDict, metadata_type: str):
+        assert metadata_type in self._metadata_types, (
+            f"this project is listed as a '{metadata_type}' type project but this is"
+            f" unknown. Projects must be one of {list(self._metadata_types.keys())}"
+        )
+        validate_metadata(metadata, self._metadata_types[metadata_type])
+        md = self._metadata_types[metadata_type](**metadata)
+
+        post_request_pth = f"/editor/create/{metadata_type}"
+        self._post_request(pth=post_request_pth, metadata=md.model_dump(exclude_none=True, exclude_unset=True))
 
     def update_timeseries_by_id(
         self,
@@ -352,19 +524,10 @@ class MetadataEditor(BaseModel):
         # todo(gblackadder) check that it's correct you can't update the idno. The documentation
         #   https://metadataeditorqa.worldbank.org/api-documentation/editor/#operation/createTimeseries
         #   implies you can but in my observation from calling the api, you cannot
-        metadata = self.get_project_by_id(id)["metadata"]
-        ts = TimeseriesSchema(
-            idno=metadata["idno"],
-            metadata_information=metadata.get("metadata_information", None),
-            series_description=metadata.get("series_description", None),
-            datacite=metadata.get("datacite", None),
-            provenance=metadata.get("provenance", None),
-            tags=metadata.get("tags", None),
-            additional=metadata.get("additional", None),
-        )
 
-        ts = update_metadata(
-            ts,
+        self._update_by_id(
+            id,
+            "timeseries",
             series_description=series_description,
             metadata_information=metadata_information,
             datacite=datacite,
@@ -373,7 +536,96 @@ class MetadataEditor(BaseModel):
             additional=additional,
         )
 
-        post_request_template_path = "/editor/update/timeseries/{}"
+    def update_survey_microdata_by_id(
+        self,
+        id: int,
+        repositoryid: Optional[str] = None,
+        access_policy: Optional[Union[str, AccessPolicy]] = None,
+        published: Optional[int] = None,
+        overwrite: Optional[Union[str, Overwrite]] = None,
+        doc_desc: Optional[Union[Dict, DocDesc]] = None,
+        study_desc: Optional[Union[Dict, StudyDesc]] = None,
+        data_files: Optional[Union[List[Dict], List[DatafileSchema]]] = None,
+        variables: Optional[Union[List[Dict], List[VariableSchema]]] = None,
+        variable_groups: Optional[Union[List[Dict], List[VariableGroupSchema]]] = None,
+        provenance: Optional[Union[List[Dict], List[ProvenanceSchema]]] = None,
+        tags: Optional[Union[List[Dict], List[Tag]]] = None,
+        lda_topics: Optional[Union[List[Dict], List[LdaTopic]]] = None,
+        embeddings: Optional[Union[List[Dict], List[Embedding]]] = None,
+        additional: Optional[MetadataDict] = None,
+    ):
+        """
+        Args:
+            id (int): the id of the project.
+            repositoryid : Optional[str]
+                The identifier for the repository where the survey microdata is to be stored.
+            access_policy : Optional[Union[str, AccessPolicy]]
+                The access policy for the survey data. Can be a string or an AccessPolicy object.
+            published : Optional[int]
+                The publication status of the survey data. Typically, 0 for unpublished and 1 for published.
+            overwrite : Optional[Union[str, Overwrite]]
+                Policy for overwriting existing data. Can be a string or an Overwrite object.
+            doc_desc : Optional[Union[Dict, DocDesc]]
+                Description of the documentation for the survey. Can be a dictionary or a DocDesc object.
+            study_desc : Optional[Union[Dict, StudyDesc]]
+                Description of the study. Can be a dictionary or a StudyDesc object.
+            data_files : Optional[Union[List[Dict], List[DatafileSchema]]]
+                List of data files associated with the survey. Each item can be a dictionary or a DatafileSchema object.
+            variables : Optional[Union[List[Dict], List[VariableSchema]]]
+                List of variables included in the survey. Each item can be a dictionary or a VariableSchema object.
+            variable_groups : Optional[Union[List[Dict], List[VariableGroupSchema]]]
+                List of variable groups included in the survey. Each item can be a dictionary or a VariableGroupSchema
+                object.
+            provenance : Optional[Union[List[Dict], List[ProvenanceSchema]]]
+                Provenance information for the survey data. Each item can be a dictionary or a ProvenanceSchema object.
+            tags : Optional[Union[List[Dict], List[Tag]]]
+                Tags associated with the survey data. Each item can be a dictionary or a Tag object.
+            lda_topics : Optional[Union[List[Dict], List[LdaTopic]]]
+                List of LDA topics associated with the survey. Each item can be a dictionary or an LdaTopic object.
+            embeddings : Optional[Union[List[Dict], List[Embedding]]]
+                List of embeddings associated with the survey. Each item can be a dictionary or an Embedding object.
+            additional : Optional[Dict[str, Any]]
+                Any additional metadata to be associated with the survey data.
+
+        """
+        # instead of by id, we could update by repositoryId if that is a unique identifier?
+        self._update_by_id(
+            id,
+            "survey",
+            repositoryid=repositoryid,
+            access_policy=access_policy,
+            published=published,
+            overwrite=overwrite,
+            doc_desc=doc_desc,
+            study_desc=study_desc,
+            data_files=data_files,
+            variables=variables,
+            variable_groups=variable_groups,
+            provenance=provenance,
+            tags=tags,
+            lda_topics=lda_topics,
+            embeddings=embeddings,
+            additional=additional,
+        )
+
+    def _update_by_id(self, id: int, expected_project_type: str, **kwargs):
+        assert expected_project_type in self._metadata_types
+        project_data = self.get_project_by_id(id)
+        project_type = project_data["type"]
+        assert project_type in self._metadata_types, (
+            f"this project is listed as a '{project_type}' type project but this is"
+            f" unknown. Projects must be one of {list(self._metadata_types.keys())}"
+        )
+        assert expected_project_type == project_type, (
+            f"You are trying to perform a {expected_project_type} update, "
+            f"but the actual data is listed as {project_type}"
+        )
+        metadata = self.get_project_by_id(id)["metadata"]
+        md = self._metadata_types[project_type](**metadata)
+
+        md = update_metadata(md, **kwargs)
+
+        post_request_template_path = f"/editor/update/{project_type}/" + "{}"
         self._post_request(
-            post_request_template_path, id=id, metadata=ts.model_dump(exclude_none=True, exclude_unset=True)
+            post_request_template_path, id=id, metadata=md.model_dump(exclude_none=True, exclude_unset=True)
         )

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from pymetadataeditor import MetadataEditor
 from pymetadataeditor.interface import DeleteNotAppliedError, MetadataDict
 from pymetadataeditor.schemas import MetadataInformation, SeriesDescription, TimeseriesSchema
+from pymetadataeditor.schemas.pydantic_definitions.survey_schema import SurveyMicrodataSchema
 
 
 class MockResponse:
@@ -61,13 +62,13 @@ def metadata_editor(monkeypatch):
         return MockResponse(status_code=200)
 
     monkeypatch.setattr(requests, "request", mock_response)
-    return MetadataEditor(api_url="https://example.com", api_key="test")
+    return MetadataEditor(api_url="https://example.com", api_key="test")  # pragma: allowlist secret
 
 
 def test_MetadataEditor_instantiation(monkeypatch):
     # url is not https
     with pytest.raises(ValidationError) as e:
-        MetadataEditor(api_url="http://example.com", api_key="test")
+        MetadataEditor(api_url="http://example.com", api_key="test")  # pragma: allowlist secret
     assert len(e.value.errors()) == 1
     assert e.value.errors()[0]["msg"] == "URL scheme should be 'https'"
 
@@ -77,7 +78,7 @@ def test_MetadataEditor_instantiation(monkeypatch):
 
     monkeypatch.setattr(requests, "request", mock_response)
     with pytest.raises(requests.HTTPError) as e:
-        MetadataEditor(api_url="https://example.com", api_key="test")
+        MetadataEditor(api_url="https://example.com", api_key="test")  # pragma: allowlist secret
     assert str(e.value).split(".")[0] == "Page not found"
 
     # bad key
@@ -86,7 +87,7 @@ def test_MetadataEditor_instantiation(monkeypatch):
 
     monkeypatch.setattr(requests, "request", mock_response)
     with pytest.raises(PermissionError) as e:
-        MetadataEditor(api_url="https://example.com", api_key="test")
+        MetadataEditor(api_url="https://example.com", api_key="test")  # pragma: allowlist secret
     assert str(e.value).split(".")[0] == "Access to that URL is denied"
 
     # good instantiation
@@ -94,7 +95,7 @@ def test_MetadataEditor_instantiation(monkeypatch):
         return MockResponse(status_code=200)
 
     monkeypatch.setattr(requests, "request", mock_response)
-    MetadataEditor(api_url="https://example.com", api_key="test")
+    MetadataEditor(api_url="https://example.com", api_key="test")  # pragma: allowlist secret
 
 
 @pytest.mark.parametrize("method", ["get", "post"])
@@ -204,6 +205,27 @@ def test_create_and_log_timeseries(monkeypatch, metadata_editor):
         )
 
 
+def test_create_and_log_survey_microdata(monkeypatch, metadata_editor):
+    def mock_response(*args, **kwargs):
+        return MockResponse(status_code=200)
+
+    monkeypatch.setattr(requests, "request", mock_response)
+
+    # metadata no metadata
+    metadata_editor.create_and_log_survey_microdata()
+
+    # # metadata doc_desc no idno
+    with pytest.raises(ValueError):
+        metadata_editor.create_and_log_survey_microdata(study_desc={})
+
+    metadata_editor.create_and_log_survey_microdata(
+        study_desc={
+            "title_statement": {"idno": "1", "title": "survey1"},
+            "study_info": {"nation": [{"name": "nation_name"}]},
+        }
+    )
+
+
 def test_update_timeseries_by_id(monkeypatch, metadata_editor):
     series_description = SeriesDescription(idno="17", name="1")
     metadata_information = {"title": "check we can pass in a dict as well as a pydantic object"}
@@ -228,7 +250,10 @@ def test_update_timeseries_by_id(monkeypatch, metadata_editor):
         return MockResponse(
             status_code=200,
             json_data={
-                "project": {"metadata": {"idno": "12", "series_description": {"idno": "12", "name": "oldname"}}}
+                "project": {
+                    "type": "timeseries",
+                    "metadata": {"idno": "12", "series_description": {"idno": "12", "name": "oldname"}},
+                }
             },
         )
 
@@ -236,6 +261,61 @@ def test_update_timeseries_by_id(monkeypatch, metadata_editor):
     metadata_editor.update_timeseries_by_id(
         1, series_description=series_description, metadata_information=metadata_information
     )
+
+
+def test_update_survey_microdata_by_id(monkeypatch, metadata_editor):
+    series_description = SeriesDescription(idno="17", name="1")
+    metadata_information = {"title": "check we can pass in a dict as well as a pydantic object"}
+
+    # id is bad
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=400,
+            json_data={},
+            error_message="""{"message": "You don't have permission to access this project"}""",
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    with pytest.raises(Exception) as e:
+        metadata_editor.update_survey_microdata_by_id(1, repositoryid="123abc")
+    assert str(e.value) == "Access to this id is denied. Check that the id '1' is correct"
+
+    # id is good but type of existing data is listed as timeseries even though the user is trying to update a survey
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=200,
+            json_data={
+                "project": {
+                    "type": "timeseries",
+                    "metadata": {"idno": "12", "series_description": {"idno": "12", "name": "oldname"}},
+                }
+            },
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    with pytest.raises(Exception) as e:
+        metadata_editor.update_survey_microdata_by_id(
+            1, series_description=series_description, metadata_information=metadata_information
+        )
+
+    def mock_response(*args, **kwargs):
+        return MockResponse(
+            status_code=200,
+            json_data={
+                "project": {
+                    "type": "survey",
+                    "metadata": {
+                        "study_desc": {
+                            "title_statement": {"idno": "1", "title": "survey1"},
+                            "study_info": {"nation": [{"name": "nation_name"}]},
+                        }
+                    },
+                }
+            },
+        )
+
+    monkeypatch.setattr(requests, "request", mock_response)
+    metadata_editor.update_survey_microdata_by_id(1, repositoryid="1")
 
 
 def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
@@ -271,16 +351,14 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
     monkeypatch.setattr(requests, "request", mock_response)
 
     # as object
-    ts = metadata_editor.get_project_metadata_by_id(
-        1,
-    )
-    assert isinstance(ts, TimeseriesSchema)
+    ts = metadata_editor.get_project_metadata_by_id(1, as_object=True)
+    assert isinstance(ts, TimeseriesSchema), type(ts)
     assert ts.idno == "12"
     assert ts.series_description.idno == "12"
     assert ts.series_description.name == "oldname"
 
     # as basic dictionary
-    ts = metadata_editor.get_project_metadata_by_id(1, as_dictionary=True)
+    ts = metadata_editor.get_project_metadata_by_id(1, as_object=False)
     assert isinstance(ts, dict)
     assert ts["idno"] == "12"
     assert ts["series_description"]["idno"] == "12"
@@ -288,7 +366,7 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
     assert len(ts) == 2
 
     # as full dictionary
-    ts = metadata_editor.get_project_metadata_by_id(1, as_dictionary=True, exclude_unset=False)
+    ts = metadata_editor.get_project_metadata_by_id(1, exclude_unset=False, as_object=False)
     assert isinstance(ts, dict)
     assert ts["idno"] == "12"
     assert ts["series_description"]["idno"] == "12"
@@ -299,25 +377,58 @@ def test_get_project_metadata_by_id(monkeypatch, metadata_editor):
         assert field in ts
 
 
-def test_create_basic_timeseries_metadata(metadata_editor):
+def test_skeleton_timeseries_metadata(metadata_editor):
+    # as dictionary
+    ts = metadata_editor.skeleton_timeseries_metadata(idno="12", name="oldname")
+    assert isinstance(ts, dict)
+    assert ts["idno"] == "12"
+    assert ts["series_description"]["idno"] == "12"
+    assert ts["series_description"]["name"] == "oldname"
+    assert len(ts) == 7
+    additional_fields = ["metadata_information", "datacite", "provenance", "tags", "additional"]
+    for field in additional_fields:
+        assert field in ts
+
     # as object
-    ts = metadata_editor.create_basic_timeseries_metadata(idno="12", name="oldname")
+    ts = metadata_editor.skeleton_timeseries_metadata(idno="12", name="oldname", as_object=True)
     assert isinstance(ts, TimeseriesSchema)
     assert ts.idno == "12"
     assert ts.series_description.idno == "12"
     assert ts.series_description.name == "oldname"
     ts.metadata_information = MetadataInformation(title="example_title")
 
+
+def test_skeleton_survey_microdata_metadata(metadata_editor):
     # as dictionary
-    ts = metadata_editor.create_basic_timeseries_metadata(idno="12", name="oldname", as_dictionary=True)
-    assert isinstance(ts, dict)
-    assert ts["idno"] == "12"
-    assert ts["series_description"]["idno"] == "12"
-    assert ts["series_description"]["name"] == "oldname"
-    assert len(ts) == 7
-    additional_fields = ["metadata_information", "datacite", "provenance", "tags", "additional"]
+    sm = metadata_editor.skeleton_survey_microdata_metadata(idno="1", title="mytitle")
+    assert isinstance(sm, dict)
+    assert sm["study_desc"]["title_statement"]["idno"] == "1"
+    assert sm["study_desc"]["title_statement"]["title"] == "mytitle"
+    assert len(sm) == 14
+    additional_fields = [
+        "repositoryid",
+        "access_policy",
+        "published",
+        "overwrite",
+        "doc_desc",
+        "study_desc",
+        "data_files",
+        "variables",
+        "variable_groups",
+        "provenance",
+        "tags",
+        "lda_topics",
+        "embeddings",
+        "additional",
+    ]
     for field in additional_fields:
-        assert field in ts
+        assert field in sm
+
+    # as object
+    sm = metadata_editor.skeleton_survey_microdata_metadata(idno="1", title="mytitle", as_object=True)
+    assert isinstance(sm, SurveyMicrodataSchema)
+    assert sm.study_desc.title_statement.idno == "1"
+    assert sm.study_desc.title_statement.title == "mytitle"
 
 
 class MockGetProjectById:

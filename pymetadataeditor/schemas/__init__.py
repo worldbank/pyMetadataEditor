@@ -1,3 +1,5 @@
+from pymetadataeditor.schemas.pydantic_definitions.common_schemas import OriginDescription, ProvenanceSchema, Tag
+
 from .pydantic_definitions.timeseries_schema import (
     Acknowledgement,
     Acronym,
@@ -31,10 +33,8 @@ from .pydantic_definitions.timeseries_schema import (
     MetadataInformation,
     MethodologyReference,
     NameType,
-    OriginDescription,
     OtherIdentifier,
     Producer,
-    ProvenanceSchema,
     RefCountryItem,
     RelatedIndicator,
     ResourceTypeGeneral,
@@ -42,7 +42,6 @@ from .pydantic_definitions.timeseries_schema import (
     SeriesGroup,
     Source,
     StatisticalConceptReference,
-    Tag,
     Theme,
     TimePeriod,
     TimeseriesSchema,

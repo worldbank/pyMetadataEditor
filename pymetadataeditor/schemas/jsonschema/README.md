@@ -6,6 +6,16 @@ Datacite (accessed 20June2024): https://metadataeditorqa.worldbank.org/api-docum
 
 Provenance (accessed 20June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/provenance-schema.json
 
+Survey (AKA Microdata) (accessed 24June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/survey-schema.json
+
+DDI (accessed 24June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/ddi-schema.json
+
+Datafile (accessed 24June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/datafile-schema.json
+
+Variable (accessed 24June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/variable-schema.json
+
+Variable Group (accessed 24June2024): https://metadataeditorqa.worldbank.org/api-documentation/editor/variable-group-schema.json
+
 
 # todo: 
 
